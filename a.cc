@@ -286,7 +286,10 @@ void printf_vm(detail::fmtstack<charT> fstk, Args&&... args)
 		case OP_STOP:
 			return;
 		case OP_RAW_S:
-			std::cout << fstk.raw_string(*it);
+			{
+				auto sv = fstk.raw_string(*it);
+				std::cout.write(sv.data(), sv.size());
+			}
 			break;
 		case OP_RAW_C:
 			std::cout.put(ch<charT>(*it));
