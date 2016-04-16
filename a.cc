@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <algorithm>
+#include <assert.h>
 #include <experimental/string_view>
 
 #include "visit_at.h"
@@ -12,68 +13,10 @@ using std::experimental::basic_string_view;
 namespace detail
 {
 
-// IR
-template <typename charT>
-struct fmtstack
-{
-	struct instruction
-	{
-		unsigned int op;
-		union
-		{
-			int arg;
-			struct
-			{
-				short off1;
-				short off2;
-			};
-			charT ch;
-		};
-	};
+using std::begin;
+using std::end;
 
-	struct data_entry
-	{
-		int arg1;
-		int arg2;
-	};
-
-	union entry
-	{
-		instruction i;
-		data_entry d;
-	};
-
-	/*
-	struct entry
-	{
-		int arg1;
-		int arg2;
-	};
-
-	constexpr int op() const
-	{
-		return arg1;
-	}
-	*/
-
-	charT const* start;
-	// maximum 9 arguments, 12 raw inputs, 1 null instruction
-	// for each extra escape character, sacrifice 1 argument.
-	entry line[31];
-};
-
-template <typename charT, typename Iter>
-constexpr
-basic_string_view<charT> raw_string_at(fmtstack<charT> fstk, Iter it)
-{
-	return { fstk.start + it->i.off1, size_t(it->i.off2 - it->i.off1) };
-}
-
-static_assert(sizeof(fmtstack<char>::entry) == 2 * sizeof(int), "");
-static_assert(sizeof(fmtstack<char>::line) == 62 * sizeof(int), "");
-static_assert(sizeof(fmtstack<char>) <= 64 * sizeof(int), "");
-
-enum op
+enum op_type
 {
 	OP_STOP,
 	OP_RAW_S,
@@ -81,6 +24,128 @@ enum op
 	OP_S,
 	OP_C,
 };
+
+struct entry
+{
+	constexpr auto op() const
+	{
+		return op_type(arg1);
+	}
+
+	constexpr auto arg() const
+	{
+		return int(arg2);
+	}
+
+	template <typename charT>
+	friend constexpr auto ch(entry const& x)
+	{
+		assert(x.op() == OP_RAW_C);
+		return charT(x.arg2);
+	}
+
+	constexpr auto hi() const
+	{
+		assert(op() == OP_RAW_S);
+		return arg2 >> 16;
+	}
+
+	constexpr auto lo() const
+	{
+		assert(op() == OP_RAW_S);
+		return arg2 & 0xffff;
+	}
+
+	unsigned int arg1;
+	unsigned int arg2;
+};
+
+template <typename charT>
+constexpr auto ch(entry const& x);
+
+// IR
+template <typename charT>
+struct fmtstack
+{
+	using iterator = entry const*;
+
+	constexpr iterator begin() const
+	{
+		return line;
+	}
+
+	struct sentinel
+	{
+		friend bool operator==(iterator it, sentinel st)
+		{
+			return it->op() == OP_STOP;
+		}
+
+		friend bool operator!=(iterator it, sentinel st)
+		{
+			return !(it == st);
+		}
+	};
+
+	constexpr sentinel end() const
+	{
+		return {};
+	}
+
+	basic_string_view<charT> raw_string(entry const& x) const
+	{
+		auto hi = x.hi();
+		auto lo = x.lo();
+		return { start + hi, lo - hi };
+	}
+
+	charT const* start;
+	// maximum 9 arguments, 12 raw inputs, 1 null instruction
+	// for each extra escape character, sacrifice 1 argument.
+	entry line[31];
+};
+
+static_assert(sizeof(fmtstack<char>::line) == 62 * sizeof(int), "");
+static_assert(sizeof(fmtstack<char>) <= 64 * sizeof(int), "");
+
+constexpr
+entry instruction(op_type op, int arg)
+{
+	return { op, unsigned(arg) };
+}
+
+constexpr
+auto instruction()
+{
+	return instruction(OP_STOP, {});
+}
+
+template <typename Iter>
+constexpr
+auto instruction(Iter from, Iter first, Iter last)
+{
+	assert(from <= first and first <= last);
+	if (last - from > 0xffff)
+		throw std::length_error
+		{
+		    "raw string is too long"
+		};
+
+	return instruction(OP_RAW_S, ((first - from) << 16) ^ (last - from));
+}
+
+template <typename charT>
+constexpr
+auto instruction(charT ch)
+{
+	return entry{ OP_RAW_C, unsigned(ch) };
+}
+
+constexpr
+entry data_entry(int arg1, int arg2)
+{
+	return { unsigned(arg1), unsigned(arg2) };
+}
 
 template <typename Iter, typename charT>
 constexpr
@@ -114,14 +179,11 @@ fmtstack<charT> compile(charT const* s, size_t sz)
 			break;
 		else if (p - bp == 1)
 		{
-			it->i.op = OP_RAW_C;
-			it->i.ch = *bp;
+			*it = instruction(*bp);
 		}
 		else
 		{
-			it->i.op = OP_RAW_S;
-			it->i.off1 = bp - sv.begin();
-			it->i.off2 = p - sv.begin();
+			*it = instruction(sv.begin(), bp, p);
 		}
 		++it;
 
@@ -131,8 +193,7 @@ fmtstack<charT> compile(charT const* s, size_t sz)
 			switch (*p)
 			{
 			case 's':
-				it->i.op = OP_S;
-				it->i.arg = ac;
+				*it = instruction(OP_S, ac);
 				++ac;
 				++p;
 				break;
@@ -149,7 +210,7 @@ fmtstack<charT> compile(charT const* s, size_t sz)
 		bp = p;
 	}
 
-	it->i.op = OP_STOP;
+	*it = instruction();
 
 	return fstk;
 }
@@ -168,18 +229,20 @@ void printf_vm(detail::fmtstack<charT> fstk, Args&&... args)
 {
 	using namespace detail;
 
-	for (auto it = fstk.line; it->i.op != OP_STOP; ++it)
+	for (auto it = fstk.begin();; ++it)
 	{
-		switch (it->i.op)
+		switch (it->op())
 		{
+		case OP_STOP:
+			return;
 		case OP_RAW_S:
-			std::cout << raw_string_at(fstk, it);
+			std::cout << fstk.raw_string(*it);
 			break;
 		case OP_RAW_C:
-			std::cout.put(it->i.ch);
+			std::cout.put(ch<charT>(*it));
 			break;
 		case OP_S:
-			visit_at(it->i.arg, [&](auto&& x)
+			visit_at(it->arg(), [&](auto&& x)
 			    {
 				std::cout << x;
 			    }, std::forward_as_tuple(args...));
@@ -194,6 +257,7 @@ void printf_vm(detail::fmtstack<charT> fstk, Args&&... args)
 
 int main()
 {
+	//constexpr auto x = "hello, %s\n"_fmt;
 	auto x = "hello, %s\n"_fmt;
 	printf_vm(x, "nice");
 }
