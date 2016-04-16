@@ -1,10 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <algorithm>
+#include <tuple>
 #include <assert.h>
 #include <experimental/string_view>
-
-#include "visit_at.h"
 
 #include <iostream>
 
@@ -193,8 +192,8 @@ fmtstack<charT> compile(charT const* s, size_t sz)
 			switch (*p)
 			{
 			case 's':
-				*it = instruction(OP_S, ac);
 				++ac;
+				*it = instruction(OP_S, ac);
 				++p;
 				break;
 			default:
@@ -223,6 +222,57 @@ auto operator"" _fmt(char const* s, size_t sz)
 	return detail::compile(s, sz);
 }
 
+template <int Low, int High, int Mid = (Low + High) / 2, typename = void>
+struct _visit1_at;
+
+template <int Low, int High, int Mid>
+struct _visit1_at<Low, High, Mid, std::enable_if_t<(Low > High)>>
+{
+	template <typename... T>
+	static decltype(auto) apply(int, T&&...) {}
+};
+
+template <int Mid>
+struct _visit1_at<Mid, Mid, Mid>
+{
+	template <typename Tuple, typename F>
+	static decltype(auto) apply(int n, F&& f, Tuple&& tp) {
+		return std::forward<F>(f)(
+		    std::get<Mid - 1>(std::forward<Tuple>(tp)));
+	}
+};
+
+template <int Low, int High, int Mid>
+struct _visit1_at<Low, High, Mid, std::enable_if_t<(Low < High)>>
+{
+	template <typename... T>
+	static decltype(auto) apply(int n, T&&... t) {
+		if (n < Mid)
+			return _visit1_at<Low, Mid - 1>::apply(n,
+			    std::forward<T>(t)...);
+		else if (n == Mid)
+			return _visit1_at<Mid, Mid>::apply(n,
+			    std::forward<T>(t)...);
+		else
+			return _visit1_at<Mid + 1, High>::apply(n,
+			    std::forward<T>(t)...);
+	}
+};
+
+template <typename Tuple, typename F>
+inline
+decltype(auto) visit1_at(int n, F&& f, Tuple&& tp) {
+	constexpr int m = std::tuple_size<std::decay_t<Tuple>>::value;
+	if (n > m)
+		throw std::out_of_range
+		{
+		    "no such argument"
+		};
+
+	return _visit1_at<1, m>::apply(n, std::forward<F>(f),
+	    std::forward<Tuple>(tp));
+}
+
 template <typename charT, typename... Args>
 inline
 void printf_vm(detail::fmtstack<charT> fstk, Args&&... args)
@@ -242,7 +292,7 @@ void printf_vm(detail::fmtstack<charT> fstk, Args&&... args)
 			std::cout.put(ch<charT>(*it));
 			break;
 		case OP_S:
-			visit_at(it->arg(), [&](auto&& x)
+			visit1_at(it->arg(), [&](auto&& x)
 			    {
 				std::cout << x;
 			    }, std::forward_as_tuple(args...));
