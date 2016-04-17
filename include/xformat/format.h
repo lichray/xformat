@@ -26,6 +26,7 @@
 #pragma once
 
 #include <assert.h>
+#include <limits>
 #include <experimental/string_view>
 
 #include "tuple.h"
@@ -43,8 +44,7 @@ using std::end;
 
 enum op_type
 {
-	OP_STOP,
-	OP_RAW_S,
+	OP_RAW_S = 0x1,
 	OP_RAW_C,
 	OP_S,
 	OP_C,
@@ -54,28 +54,13 @@ struct entry
 {
 	constexpr auto op() const
 	{
-		return op_type(arg1);
+		return op_type(op_);
 	}
 
-	constexpr auto arg() const
-	{
-		return int(arg2);
-	}
-
-	constexpr auto hi() const
-	{
-		assert(op() == OP_RAW_S);
-		return arg2 >> 16;
-	}
-
-	constexpr auto lo() const
-	{
-		assert(op() == OP_RAW_S);
-		return arg2 & 0xffff;
-	}
-
-	unsigned int arg1;
-	unsigned int arg2;
+	unsigned int op_;
+	int arg;
+	int arg1;
+	int arg2;
 };
 
 }
@@ -90,65 +75,52 @@ struct fmtstack
 		return line;
 	}
 
+	constexpr iterator end() const
+	{
+		return line + size;
+	}
+
 	basic_string_view<charT> raw_string(detail::entry const& x) const
 	{
-		auto hi = x.hi();
-		auto lo = x.lo();
-		return { start + hi, lo - hi };
+		auto hi = x.arg1;
+		auto lo = x.arg2;
+		return { start + hi, size_t(lo - hi) };
 	}
 
 	static charT raw_char(detail::entry const& x)
 	{
 		assert(x.op() == detail::OP_RAW_C);
-		return charT(x.arg2);
+		return charT(x.arg);
 	}
 
 	charT const* start;
-	// maximum 9 arguments, 12 raw inputs, 1 null instruction
+	size_t size;
+	// maximum 9 arguments, 10 raw inputs
 	// for each extra escape character, sacrifice 1 argument.
-	detail::entry line[31];
+	detail::entry line[19];
 };
 
-static_assert(sizeof(fmtstack<char>::line) == 62 * sizeof(int), "");
-static_assert(sizeof(fmtstack<char>) <= 64 * sizeof(int), "");
+static_assert(sizeof(fmtstack<char>) <= 80 * sizeof(int), "");
 
 namespace detail
 {
-
-constexpr
-entry instruction(op_type op, int arg)
-{
-	return { op, unsigned(arg) };
-}
-
-constexpr
-auto instruction()
-{
-	return instruction(OP_STOP, {});
-}
 
 template <typename Iter>
 constexpr
 auto instruction(Iter from, Iter first, Iter last)
 {
 	assert(from <= first and first <= last);
-	if (last - from > 0xffff)
+	if (last - from > std::numeric_limits<int>::max())
 		throw std::length_error{ "raw string is too long" };
 
-	return instruction(OP_RAW_S, ((first - from) << 16) ^ (last - from));
+	return entry{ OP_RAW_S, {}, int(first - from), int(last - from) };
 }
 
 template <typename charT>
 constexpr
 auto instruction(charT ch)
 {
-	return entry{ OP_RAW_C, unsigned(ch) };
-}
-
-constexpr
-entry data_entry(int arg1, int arg2)
-{
-	return { unsigned(arg1), unsigned(arg2) };
+	return entry{ OP_RAW_C, int(ch) };
 }
 
 template <typename Iter, typename charT>
@@ -190,6 +162,7 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 			*it = instruction(sv.begin(), bp, p);
 		}
 		++it;
+		++fstk.size;
 
 		if (p != sv.end())
 		{
@@ -198,7 +171,7 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 			{
 			case 's':
 				++ac;
-				*it = instruction(OP_S, ac);
+				*it = entry{ OP_S, ac };
 				++p;
 				break;
 			default:
@@ -207,14 +180,11 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 				    "unknown format specifier"
 				};
 			}
-			// not appending arg1 arg2
 			++it;
+			++fstk.size;
 		}
-		++it;
 		bp = p;
 	}
-
-	*it = instruction();
 
 	return fstk;
 }
@@ -233,32 +203,30 @@ decltype(auto) format(Formatter fter, fmtstack<charT> fstk, Args&&... args)
 {
 	using namespace detail;
 
-	for (auto it = fstk.begin();; ++it)
+	for (auto&& et : fstk)
 	{
-		switch (it->op())
+		switch (et.op())
 		{
-		case OP_STOP:
-			return fter.state();
 		case OP_RAW_S:
-			fter.send(fstk.raw_string(*it));
+			fter.send(fstk.raw_string(et));
 			break;
 		case OP_RAW_C:
-			fter.send(fstk.raw_char(*it));
+			fter.send(fstk.raw_char(et));
 			break;
 		case OP_S:
-			visit1_at(it->arg(),
+			visit1_at(et.arg,
 			          [&](auto&& x)
 			          {
 				          fter.format(x);
 				  },
 			          std::forward_as_tuple(args...));
-			++it;
 			break;
 		case OP_C:
-			++it;
 			break;
 		}
 	}
+
+	return fter.state();
 }
 
 }
