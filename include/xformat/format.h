@@ -70,6 +70,10 @@ struct fmtstack
 {
 	using iterator = detail::entry const*;
 
+	explicit constexpr fmtstack(charT const* s) : start(s)
+	{
+	}
+
 	constexpr iterator begin() const
 	{
 		return line;
@@ -80,21 +84,28 @@ struct fmtstack
 		return line + size;
 	}
 
-	basic_string_view<charT> raw_string(detail::entry const& x) const
+	constexpr void push(detail::entry x)
+	{
+		line[size++] = std::move(x);
+	}
+
+	constexpr auto raw_string(detail::entry const& x) const
+	    -> basic_string_view<charT>
 	{
 		auto hi = x.arg1;
 		auto lo = x.arg2;
 		return { start + hi, size_t(lo - hi) };
 	}
 
-	static charT raw_char(detail::entry const& x)
+	static constexpr charT raw_char(detail::entry const& x)
 	{
 		assert(x.op() == detail::OP_RAW_C);
 		return charT(x.arg);
 	}
 
+private:
 	charT const* start;
-	size_t size;
+	size_t size = 0;
 	// maximum 9 arguments, 10 raw inputs
 	// for each extra escape character, sacrifice 1 argument.
 	detail::entry line[19];
@@ -143,7 +154,6 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 {
 	fmtstack<charT> fstk { s };
 	auto sv = basic_string_view<charT>(s, sz);
-	auto it = fstk.line;
 	int ac = 0;
 
 	auto bp = sv.begin();
@@ -154,17 +164,9 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 		if (p == bp)
 			;
 		else if (p - bp == 1)
-		{
-			*it = instruction(*bp);
-			++it;
-			++fstk.size;
-		}
+			fstk.push(instruction(*bp));
 		else
-		{
-			*it = instruction(sv.begin(), bp, p);
-			++it;
-			++fstk.size;
-		}
+			fstk.push(instruction(sv.begin(), bp, p));
 
 		if (p != sv.end())
 		{
@@ -173,7 +175,7 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 			{
 			case 's':
 				++ac;
-				*it = entry{ OP_S, ac };
+				fstk.push({ OP_S, ac });
 				++p;
 				break;
 			default:
@@ -182,8 +184,6 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 				    "unknown format specifier"
 				};
 			}
-			++it;
-			++fstk.size;
 		}
 		bp = p;
 	}
