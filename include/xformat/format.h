@@ -39,9 +39,6 @@ using std::experimental::basic_string_view;
 namespace detail
 {
 
-using std::begin;
-using std::end;
-
 enum op_type
 {
 	OP_RAW_S = 0x1,
@@ -84,8 +81,16 @@ struct fmtstack
 		return line + size;
 	}
 
+	static constexpr size_t max_size()
+	{
+		return sizeof(line) / sizeof(detail::entry);
+	}
+
 	constexpr void push(detail::entry x)
 	{
+		if (size == max_size())
+			throw std::length_error{ "format string too complex" };
+
 		line[size++] = std::move(x);
 	}
 
@@ -108,7 +113,7 @@ private:
 	size_t size = 0;
 	// maximum 9 arguments, 10 raw inputs
 	// for each extra escape character, sacrifice 1 argument.
-	detail::entry line[19];
+	detail::entry line[19] = {};
 };
 
 static_assert(sizeof(fmtstack<char>) <= 80 * sizeof(int), "");
