@@ -34,7 +34,7 @@ namespace stdex
 template <typename charT, typename traits, typename... Args>
 inline
 decltype(auto) printf(std::basic_ostream<charT, traits>& out,
-                      fmtstack<charT> fstk, Args&&... args)
+                      fmtstack<charT> const& fstk, Args&&... args)
 {
 	return format(ostream_formatter<charT, traits>(out), fstk,
 	              std::forward<Args>(args)...);
@@ -43,7 +43,8 @@ decltype(auto) printf(std::basic_ostream<charT, traits>& out,
 template <typename charT, typename traits, typename... Args>
 inline
 decltype(auto) printf(std::basic_ostream<charT, traits>& out,
-                      basic_string_view<charT, traits> fmt, Args&&... args)
+                      std::decay_t<basic_string_view<charT, traits>> fmt,
+                      Args&&... args)
 {
 	return printf(out, detail::compile_c(fmt.data(), fmt.size()),
 	              std::forward<Args>(args)...);

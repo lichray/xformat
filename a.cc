@@ -6,6 +6,6 @@ int main()
 {
 	using namespace stdex;
 
-	auto x = "hello, %s\n"_cfmt;
-	printf(std::cout, x, "nice");
+	printf(std::cout, "hello, %s\n"_cfmt, "nice");
+	printf(std::cout, "%s\n", 42);
 }

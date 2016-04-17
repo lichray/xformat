@@ -148,21 +148,23 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 
 	auto bp = sv.begin();
 
-	while (1)
+	while (bp != sv.end())
 	{
 		auto p = findc(bp, sv.end(), '%');
 		if (p == bp)
-			break;
+			;
 		else if (p - bp == 1)
 		{
 			*it = instruction(*bp);
+			++it;
+			++fstk.size;
 		}
 		else
 		{
 			*it = instruction(sv.begin(), bp, p);
+			++it;
+			++fstk.size;
 		}
-		++it;
-		++fstk.size;
 
 		if (p != sv.end())
 		{
@@ -199,7 +201,8 @@ auto operator"" _cfmt(char const* s, size_t sz)
 
 template <typename charT, typename Formatter, typename... Args>
 inline
-decltype(auto) format(Formatter fter, fmtstack<charT> fstk, Args&&... args)
+decltype(auto) format(Formatter fter, fmtstack<charT> const& fstk,
+                      Args&&... args)
 {
 	using namespace detail;
 
