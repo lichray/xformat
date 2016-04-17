@@ -36,13 +36,6 @@ struct entry
 		return int(arg2);
 	}
 
-	template <typename charT>
-	friend constexpr auto ch(entry const& x)
-	{
-		assert(x.op() == OP_RAW_C);
-		return charT(x.arg2);
-	}
-
 	constexpr auto hi() const
 	{
 		assert(op() == OP_RAW_S);
@@ -96,6 +89,12 @@ struct fmtstack
 		auto hi = x.hi();
 		auto lo = x.lo();
 		return { start + hi, lo - hi };
+	}
+
+	static charT raw_char(entry const& x)
+	{
+		assert(x.op() == OP_RAW_C);
+		return charT(x.arg2);
 	}
 
 	charT const* start;
@@ -292,7 +291,7 @@ void printf_vm(detail::fmtstack<charT> fstk, Args&&... args)
 			}
 			break;
 		case OP_RAW_C:
-			std::cout.put(ch<charT>(*it));
+			std::cout.put(fstk.raw_char(*it));
 			break;
 		case OP_S:
 			visit1_at(it->arg(), [&](auto&& x)
