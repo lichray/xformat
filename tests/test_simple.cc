@@ -27,7 +27,16 @@ TEST_CASE("simple")
 	REQUIRE(printf(ss, "%s", 42));
 	REQUIRE(ss.str() == "42");
 
+	ss.str({});
+	REQUIRE(printf(ss, "%s%%", 42));
+	REQUIRE(ss.str() == "42%");
+
+	ss.str({});
+	REQUIRE(printf(ss, "%%akka"));
+	REQUIRE(ss.str() == "%akka");
+
 	REQUIRE_THROWS_AS("%k"_cfmt, std::invalid_argument);
+	REQUIRE_THROWS_AS("only1%"_cfmt, std::invalid_argument);
 	REQUIRE_THROWS_AS(printf(ss, "%s\n"), std::out_of_range);
 	REQUIRE_THROWS_AS(printf(ss, "%s %s %s", 1, 2), std::out_of_range);
 

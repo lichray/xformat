@@ -158,40 +158,48 @@ template <typename charT>
 constexpr
 fmtstack<charT> compile_c(charT const* s, size_t sz)
 {
+	using std::invalid_argument;
+
 	fmtstack<charT> fstk { s };
 	auto sv = basic_string_view<charT>(s, sz);
 	int ac = 0;
 
-	auto bp = sv.begin();
+	auto p = sv.begin();
 
-	while (bp != sv.end())
+	while (p != sv.end())
 	{
-		auto p = findc(bp, sv.end(), STDEX_G(charT, '%'));
-		if (p == bp)
-			;
-		else if (p - bp == 1)
-			fstk.push(instruction(*bp));
-		else
-			fstk.push(instruction(sv.begin(), bp, p));
-
-		if (p != sv.end())
+		auto np = findc(p, sv.end(), STDEX_G(charT, '%'));
+		if (auto d = np - p)
 		{
-			++p;
-			switch (*p)
-			{
-			case 's':
-				++ac;
-				fstk.push({ OP_S, ac });
-				++p;
-				break;
-			default:
-				throw std::invalid_argument
-				{
-				    "unknown format specifier"
-				};
-			}
+			if (d == 1)
+				fstk.push(instruction(*p));
+			else
+				fstk.push(instruction(sv.begin(), p, np));
 		}
-		bp = p;
+
+		if (np == sv.end())
+			break;
+
+		p = np + 1;
+		if (p == sv.end())
+			throw invalid_argument{ "missing format specifier" };
+
+		if (*p == STDEX_G(charT, '%'))
+		{
+			fstk.push(instruction(*p));
+			++p;
+			continue;
+		}
+
+		switch (*p)
+		{
+		case 's':
+			fstk.push({ OP_S, ++ac });
+			++p;
+			break;
+		default:
+			throw invalid_argument{ "unknown format specifier" };
+		}
 	}
 
 	return fstk;
