@@ -23,55 +23,17 @@
  * SUCH DAMAGE.
  */
 
-#pragma once
-
-#include <iosfwd>
-#include <experimental/string_view>
+#include <xformat/format.h>
 
 namespace stdex
 {
-
-using std::experimental::basic_string_view;
-
-template <typename charT, typename traits>
-struct ostream_outputter
+namespace detail
 {
-	using ostream_type = std::basic_ostream<charT, traits>;
 
-	explicit ostream_outputter(ostream_type& out) : out_(out)
-	{
-	}
+template fmtstack<char> compile_c(char const*, size_t);
+template fmtstack<wchar_t> compile_c(wchar_t const*, size_t);
+template fmtstack<char16_t> compile_c(char16_t const*, size_t);
+template fmtstack<char32_t> compile_c(char32_t const*, size_t);
 
-	void send(charT ch)
-	{
-		state().put(ch);
-	}
-
-	void send(basic_string_view<charT, traits> sv)
-	{
-		state().write(sv.data(), std::streamsize(sv.size()));
-	}
-
-	ostream_type& state()
-	{
-		return out_;
-	}
-
-private:
-	ostream_type& out_;
-};
-
-template <typename charT, typename traits>
-struct ostream_formatter : ostream_outputter<charT, traits>
-{
-	using outputter_type = ostream_outputter<charT, traits>;
-	using outputter_type::ostream_outputter;
-
-	template <typename T>
-	void format(T const& v)
-	{
-		this->state() << v;
-	}
-};
-
+}
 }

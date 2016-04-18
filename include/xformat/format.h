@@ -165,7 +165,7 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 
 	while (bp != sv.end())
 	{
-		auto p = findc(bp, sv.end(), '%');
+		auto p = findc(bp, sv.end(), charT('%'));
 		if (p == bp)
 			;
 		else if (p - bp == 1)
