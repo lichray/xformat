@@ -11,10 +11,41 @@ TEST_CASE("simple")
 {
 	std::stringstream ss;
 
-	REQUIRE(printf(ss, "hello, %s\n"_cfmt, "nice"));
-	REQUIRE(ss.str() == "hello, nice\n");
+	REQUIRE(printf(ss, ""_cfmt));
+	REQUIRE(ss.str() == "");
 
-	ss.str("");
-	printf(ss, "%s\n", 42);
+	REQUIRE(printf(ss, "", 42, "meow"));
+	REQUIRE(ss.str() == "");
+
+	REQUIRE(printf(ss, "x"));
+	REQUIRE(ss.str() == "x");
+
+	REQUIRE(printf(ss, "-man"));
+	REQUIRE(ss.str() == "x-man");
+
+	ss.str({});
+	REQUIRE(printf(ss, "%s", 42));
+	REQUIRE(ss.str() == "42");
+
+	REQUIRE_THROWS_AS("%k"_cfmt, std::invalid_argument);
+	REQUIRE_THROWS_AS(printf(ss, "%s\n"), std::out_of_range);
+	REQUIRE_THROWS_AS(printf(ss, "%s %s %s", 1, 2), std::out_of_range);
+
+	ss.str({});
+	REQUIRE(printf(ss, "%s\n", 42));
 	REQUIRE(ss.str() == "42\n");
+
+	ss.str({});
+	REQUIRE(printf(ss, "hello, %s\n"_cfmt, "world"));
+	REQUIRE(ss.str() == "hello, world\n");
+
+	ss.str({});
+	REQUIRE(printf(ss, "%s, %s, %s-body", "hey", 'u', 3));
+	REQUIRE(ss.str() == "hey, u, 3-body");
+}
+
+TEST_CASE("limitations")
+{
+	REQUIRE_NOTHROW("  %s %s %s %s %s %s %s %s %s "_cfmt);
+	REQUIRE_THROWS_AS("%s %s %s %s %s %s %s %s %s %s %s"_cfmt, std::length_error);
 }
