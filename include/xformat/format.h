@@ -30,6 +30,7 @@
 #include <experimental/string_view>
 
 #include "tuple.h"
+#include "gliteral.h"
 
 namespace stdex
 {
@@ -165,7 +166,7 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 
 	while (bp != sv.end())
 	{
-		auto p = findc(bp, sv.end(), charT('%'));
+		auto p = findc(bp, sv.end(), STDEX_G(charT, '%'));
 		if (p == bp)
 			;
 		else if (p - bp == 1)
