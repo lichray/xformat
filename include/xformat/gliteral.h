@@ -68,6 +68,17 @@ typename overloaded<Fs...>::type overload(Fs... x)
 }
 }
 
+#if defined(__has_extension) && __has_extension(c_generic_selections)
+
+#define STDEX_G(t, literal)            \
+	_Generic(t{},                  \
+	         char: literal,        \
+	         wchar_t: L##literal,  \
+	         char16_t: u##literal, \
+	         char32_t: U##literal)
+
+#elif __cpp_constexpr >= 201603
+
 #define STDEX_G(t, literal)                \
 	stdex::detail::overload(           \
 	    [](char) -> decltype(auto)     \
@@ -87,3 +98,9 @@ typename overloaded<Fs...>::type overload(Fs... x)
 		return U##literal;         \
 	    })(t{})
 
+#else
+
+// fallback
+#define STDEX_G(t, literal) static_cast<t>(literal)
+
+#endif

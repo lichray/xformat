@@ -193,7 +193,7 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 
 		switch (*p)
 		{
-		case 's':
+		case STDEX_G(charT, 's'):
 			fstk.push({ OP_S, ++ac });
 			++p;
 			break;
