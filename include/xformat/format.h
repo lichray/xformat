@@ -205,21 +205,10 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 	return fstk;
 }
 
-}
-
-constexpr
-auto operator"" _cfmt(char const* s, size_t sz)
-{
-	return detail::compile_c(s, sz);
-}
-
-template <typename charT, typename Formatter, typename... Args>
+template <typename charT, typename Formatter, typename Tuple>
 inline
-decltype(auto) format(Formatter fter, fmtstack<charT> const& fstk,
-                      Args&&... args)
+decltype(auto) vformat(Formatter fter, fmtstack<charT> const& fstk, Tuple tp)
 {
-	using namespace detail;
-
 	for (auto&& et : fstk)
 	{
 		switch (et.op())
@@ -236,7 +225,7 @@ decltype(auto) format(Formatter fter, fmtstack<charT> const& fstk,
 			          {
 				          fter.format(x);
 				  },
-			          as_tuple_of_cref(args...));
+			          tp);
 			break;
 		case OP_C:
 			break;
@@ -244,6 +233,25 @@ decltype(auto) format(Formatter fter, fmtstack<charT> const& fstk,
 	}
 
 	return fter.state();
+}
+
+}
+
+template <typename charT, typename Formatter, typename... Args>
+inline
+decltype(auto) format(Formatter fter, fmtstack<charT> const& fstk,
+                      Args&&... args)
+{
+	return detail::vformat(fter, fstk, as_tuple_of_cref(args...));
+}
+
+inline namespace literals
+{
+constexpr
+auto operator"" _cfmt(char const* s, size_t sz)
+{
+	return detail::compile_c(s, sz);
+}
 }
 
 }
