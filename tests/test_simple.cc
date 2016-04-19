@@ -1,6 +1,5 @@
 #include <xformat/ioformat.h>
 
-#define CATCH_CONFIG_MAIN
 #include "catch.hpp"
 
 #include <sstream>
@@ -61,5 +60,6 @@ TEST_CASE("simple")
 TEST_CASE("limitations")
 {
 	REQUIRE_NOTHROW("  %s %s %s %s %s %s %s %s %s "_cfmt);
-	REQUIRE_THROWS_AS("%s %s %s %s %s %s %s %s %s %s %s"_cfmt, std::length_error);
+	REQUIRE_THROWS_AS("%s %s %s %s %s %s %s %s %s %s %s"_cfmt,
+	                  std::length_error);
 }
