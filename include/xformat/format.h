@@ -236,7 +236,7 @@ decltype(auto) format(Formatter fter, fmtstack<charT> const& fstk,
 			          {
 				          fter.format(x);
 				  },
-			          std::forward_as_tuple(args...));
+			          as_tuple_of_cref(args...));
 			break;
 		case OP_C:
 			break;

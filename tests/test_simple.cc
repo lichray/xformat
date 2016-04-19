@@ -51,6 +51,11 @@ TEST_CASE("simple")
 	ss.str({});
 	REQUIRE(printf(ss, "%s, %s, %s-body", "hey", 'u', 3));
 	REQUIRE(ss.str() == "hey, u, 3-body");
+
+	ss.str({});
+	int i = 3;
+	printf(ss, "%s", std::ref(i));
+	REQUIRE(ss.str() == "3");
 }
 
 TEST_CASE("limitations")

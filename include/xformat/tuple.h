@@ -83,4 +83,31 @@ decltype(auto) visit1_at(int n, F&& f, Tuple&& tp)
 	                               std::forward<Tuple>(tp));
 }
 
+template <typename T, typename = void>
+struct _param_type
+{
+	using type = T const&;
+};
+
+template <typename T>
+struct _param_type<T, std::enable_if_t<std::is_scalar<T>::value>>
+{
+	using type = T;
+};
+
+template <typename T>
+using _param_type_t = typename _param_type<T>::type;
+
+template <typename T>
+struct _param_type<std::reference_wrapper<T>>
+{
+	using type = _param_type_t<T>;
+};
+
+template <typename... T>
+auto as_tuple_of_cref(T&&... v)
+{
+	return std::tuple<_param_type_t<std::decay_t<T>>...>{ v... };
+}
+
 }
