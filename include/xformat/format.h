@@ -144,14 +144,13 @@ template <typename Iter, typename charT>
 constexpr
 auto findc(Iter first, Iter last, charT c)
 {
-	auto it = first;
-	for (; it != last; ++it)
+	for (; first != last; ++first)
 	{
-		if (*it == c)
-			break;
+		if (*first == c)
+			return first;
 	}
 
-	return it;
+	return last;
 }
 
 template <typename charT>
