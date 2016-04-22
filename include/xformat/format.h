@@ -154,47 +154,93 @@ auto findc(Iter first, Iter last, charT c)
 }
 
 template <typename charT>
+struct bounded_reader
+{
+	using pointer = charT const*;
+
+	constexpr bounded_reader(pointer p, size_t sz) : cur_(p), end_(p + sz)
+	{
+	}
+
+	constexpr explicit operator bool() const
+	{
+		return not empty();
+	}
+
+	constexpr bool empty() const
+	{
+		return cur_ == end_;
+	}
+
+	constexpr void incr()
+	{
+		++cur_;
+	}
+
+	constexpr auto read()
+	{
+		return *cur_++;
+	}
+
+	constexpr auto find(charT c) const
+	{
+		return findc(cur_, end_, c);
+	}
+
+	constexpr auto ptr() const
+	{
+		return cur_;
+	}
+
+	constexpr void ptr(pointer p)
+	{
+		cur_ = p;
+	}
+
+private:
+	pointer cur_;
+	pointer end_;
+};
+
+template <typename charT>
 constexpr
 fmtstack<charT> compile_c(charT const* s, size_t sz)
 {
 	using std::invalid_argument;
 
 	fmtstack<charT> fstk { s };
-	auto sv = basic_string_view<charT>(s, sz);
+	bounded_reader<charT> r(s, sz);
 	int ac = 0;
 
-	auto p = sv.begin();
-
-	while (p != sv.end())
+	while (r)
 	{
-		auto np = findc(p, sv.end(), STDEX_G(charT, '%'));
-		if (auto d = np - p)
+		auto np = r.find(STDEX_G(charT, '%'));
+		if (auto d = np - r.ptr())
 		{
 			if (d == 1)
-				fstk.push(instruction(*p));
+				fstk.push(instruction(*r.ptr()));
 			else
-				fstk.push(instruction(sv.begin(), p, np));
+				fstk.push(instruction(s, r.ptr(), np));
 		}
 
-		if (np == sv.end())
+		r.ptr(np);
+		if (r.empty())
 			break;
 
-		p = np + 1;
-		if (p == sv.end())
+		r.incr();
+		if (r.empty())
 			throw invalid_argument{ "missing format specifier" };
 
-		if (*p == STDEX_G(charT, '%'))
+		if (*r.ptr() == STDEX_G(charT, '%'))
 		{
-			fstk.push(instruction(*p));
-			++p;
+			fstk.push(instruction(r.read()));
 			continue;
 		}
 
-		switch (*p)
+		switch (r.read())
 		{
 		case STDEX_G(charT, 's'):
 			fstk.push({ OP_S, ++ac });
-			++p;
 			break;
 		default:
 			throw invalid_argument{ "unknown format specifier" };
