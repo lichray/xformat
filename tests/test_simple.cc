@@ -48,8 +48,8 @@ TEST_CASE("simple")
 	REQUIRE(ss.str() == "hello, world\n");
 
 	ss.str({});
-	REQUIRE(printf(ss, "%s, %s, %s-body", "hey", 'u', 3));
-	REQUIRE(ss.str() == "hey, u, 3-body");
+	REQUIRE(printf(ss, "%s, %%%s%%, %s-body", "hey", 'u', 3));
+	REQUIRE(ss.str() == "hey, %u%, 3-body");
 
 	ss.str({});
 	int i = 3;
@@ -60,6 +60,7 @@ TEST_CASE("simple")
 TEST_CASE("limitations")
 {
 	REQUIRE_NOTHROW("  %s %s %s %s %s %s %s %s %s "_cfmt);
+	REQUIRE_NOTHROW("  %% %% %% %% %% %% %% %% %% %% "_cfmt);
 	REQUIRE_THROWS_AS("%s %s %s %s %s %s %s %s %s %s %s"_cfmt,
 	                  std::length_error);
 }

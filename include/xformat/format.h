@@ -197,6 +197,11 @@ struct bounded_reader
 		cur_ = p;
 	}
 
+	constexpr auto eptr() const
+	{
+		return end_;
+	}
+
 private:
 	pointer cur_;
 	pointer end_;
@@ -215,6 +220,25 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 	while (r)
 	{
 		auto np = r.find(STDEX_G(charT, '%'));
+
+		// process escaping first
+		if (np != r.eptr())
+		{
+			if (np + 1 == r.eptr())
+				throw invalid_argument{ "single '%'" };
+
+			if (np[1] == STDEX_G(charT, '%'))
+			{
+				if (np++ == r.ptr())
+					fstk.push(instruction(*np));
+				else
+					fstk.push(instruction(s, r.ptr(), np));
+
+				r.ptr(np + 1);
+				continue;
+			}
+		}
+
 		if (auto d = np - r.ptr())
 		{
 			if (d == 1)
@@ -228,14 +252,6 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 			break;
 
 		r.incr();
-		if (r.empty())
-			throw invalid_argument{ "missing format specifier" };
-
-		if (*r.ptr() == STDEX_G(charT, '%'))
-		{
-			fstk.push(instruction(r.read()));
-			continue;
-		}
 
 		switch (r.read())
 		{
