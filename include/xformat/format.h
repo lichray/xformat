@@ -68,7 +68,7 @@ struct fmtstack
 {
 	using iterator = detail::entry const*;
 
-	explicit constexpr fmtstack(charT const* s) : start(s)
+	constexpr explicit fmtstack(charT const* s) : start(s)
 	{
 	}
 
