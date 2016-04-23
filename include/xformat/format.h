@@ -209,6 +209,20 @@ private:
 
 template <typename charT>
 constexpr
+bool is_1to9(charT c)
+{
+	return STDEX_G(charT, '1') <= c and c <= STDEX_G(charT, '9');
+}
+
+template <typename charT>
+constexpr
+int to_int(charT c)
+{
+	return int(c - STDEX_G(charT, '0'));
+}
+
+template <typename charT>
+constexpr
 fmtstack<charT> compile_c(charT const* s, size_t sz)
 {
 	using std::invalid_argument;
@@ -216,6 +230,7 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 	fmtstack<charT> fstk { s };
 	bounded_reader<charT> r(s, sz);
 	int ac = 0;
+	bool sequential{};  // expects: ac > 0
 
 	while (r)
 	{
@@ -253,10 +268,27 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 
 		r.incr();
 
+		// assert: !r.empty()
+		if (ac == 0)
+			sequential = !is_1to9(*r.ptr());
+
+		if (sequential)
+			++ac;
+		else
+		{
+			ac = to_int(r.read());
+			if (ac < 1 or ac > 9 or r.empty() or
+			    r.read() != STDEX_G(charT, '$'))
+				throw invalid_argument{ "index is not 1 to 9" };
+		}
+
+		if (r.empty())
+			throw invalid_argument{ "incomplete specification" };
+
 		switch (r.read())
 		{
 		case STDEX_G(charT, 's'):
-			fstk.push({ OP_S, ++ac });
+			fstk.push({ OP_S, ac });
 			break;
 		default:
 			throw invalid_argument{ "unknown format specifier" };
