@@ -37,6 +37,23 @@ namespace stdex
 
 using std::experimental::basic_string_view;
 
+struct fmtshape
+{
+	constexpr auto facade() const
+	{
+		return ch_;
+	}
+
+	constexpr void operator=(char ch)
+	{
+		ch_ = ch;
+	}
+
+private:
+	char ch_ = '\0';
+	unsigned char opts_{};
+};
+
 namespace detail
 {
 
@@ -44,18 +61,27 @@ enum op_type
 {
 	OP_RAW_S = 0x1,
 	OP_RAW_C,
-	OP_S,
-	OP_C,
+	OP_FMT,
+};
+
+enum op_attr
+{
+	REG_ARG1 = 0b0100,
+	REG_ARG2 = 0b1000,
 };
 
 struct entry
 {
 	constexpr auto op() const
 	{
-		return op_type(op_);
+		return op_type(op_ & 0b11);
 	}
 
-	unsigned int op_;
+	struct
+	{
+		unsigned short op_;
+		fmtshape shape;
+	};
 	int arg;
 	int arg1;
 	int arg2;
@@ -130,14 +156,14 @@ auto instruction(Iter from, Iter first, Iter last)
 	if (last - from > std::numeric_limits<int>::max())
 		throw std::length_error{ "raw string is too long" };
 
-	return entry{ OP_RAW_S, {}, int(first - from), int(last - from) };
+	return entry{ { OP_RAW_S }, {}, int(first - from), int(last - from) };
 }
 
 template <typename charT>
 constexpr
 auto instruction(charT ch)
 {
-	return entry{ OP_RAW_C, int(ch) };
+	return entry{ { OP_RAW_C }, int(ch) };
 }
 
 template <typename Iter, typename charT>
@@ -285,14 +311,20 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 		if (r.empty())
 			throw invalid_argument{ "incomplete specification" };
 
+		fmtshape sp;
+		int width = -1;
+		int precision = -1;
+
 		switch (r.read())
 		{
 		case STDEX_G(charT, 's'):
-			fstk.push({ OP_S, ac });
+			sp = 's';
 			break;
 		default:
 			throw invalid_argument{ "unknown format specifier" };
 		}
+
+		fstk.push({ { OP_FMT, sp }, ac, width, precision });
 	}
 
 	return fstk;
@@ -312,15 +344,14 @@ decltype(auto) vformat(Formatter fter, fmtstack<charT> const& fstk, Tuple tp)
 		case OP_RAW_C:
 			fter.send(fstk.raw_char(et));
 			break;
-		case OP_S:
+		case OP_FMT:
 			visit1_at(et.arg,
 			          [&](auto&& x)
 			          {
-				          fter.format(x);
+				          fter.format(et.shape, et.arg1,
+				                      et.arg2, x);
 				  },
 			          tp);
-			break;
-		case OP_C:
 			break;
 		}
 	}

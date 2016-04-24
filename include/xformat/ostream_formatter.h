@@ -68,7 +68,7 @@ struct ostream_formatter : ostream_outputter<charT, traits>
 	using outputter_type::ostream_outputter;
 
 	template <typename T>
-	void format(T const& v)
+	void format(fmtshape shape, int width, int precision, T const& v)
 	{
 		this->state() << v;
 	}
