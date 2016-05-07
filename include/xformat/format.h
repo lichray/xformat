@@ -77,11 +77,8 @@ struct entry
 		return op_type(op_ & 0b11);
 	}
 
-	struct
-	{
-		unsigned short op_;
-		fmtshape shape;
-	};
+	unsigned short op_;
+	fmtshape shape;
 	int arg;
 	int arg1;
 	int arg2;
@@ -156,14 +153,14 @@ auto instruction(Iter from, Iter first, Iter last)
 	if (last - from > std::numeric_limits<int>::max())
 		throw std::length_error{ "raw string is too long" };
 
-	return entry{ { OP_RAW_S }, {}, int(first - from), int(last - from) };
+	return entry{ OP_RAW_S, {}, {}, int(first - from), int(last - from) };
 }
 
 template <typename charT>
 constexpr
 auto instruction(charT ch)
 {
-	return entry{ { OP_RAW_C }, int(ch) };
+	return entry{ OP_RAW_C, {}, int(ch) };
 }
 
 template <typename Iter, typename charT>
@@ -324,7 +321,7 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 			throw invalid_argument{ "unknown format specifier" };
 		}
 
-		fstk.push({ { OP_FMT, sp }, ac, width, precision });
+		fstk.push({ OP_FMT, sp, ac, width, precision });
 	}
 
 	return fstk;
