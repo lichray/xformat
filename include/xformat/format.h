@@ -37,6 +37,63 @@ namespace stdex
 
 using std::experimental::basic_string_view;
 
+enum class fmtoptions
+{
+	none,
+	left = 0x01,
+	right = 0x02,
+	sign = 0x04,
+	aligned_sign = 0x08,
+	alt = 0x10,
+	zero = 0x20,
+};
+
+constexpr
+fmtoptions operator&(fmtoptions __x, fmtoptions __y)
+{
+	return fmtoptions(int(__x) & int(__y));
+}
+
+constexpr
+fmtoptions operator|(fmtoptions __x, fmtoptions __y)
+{
+	return fmtoptions(int(__x) | int(__y));
+}
+
+constexpr
+fmtoptions operator^(fmtoptions __x, fmtoptions __y)
+{
+	return fmtoptions(int(__x) ^ int(__y));
+}
+
+constexpr
+fmtoptions
+operator~(fmtoptions __x)
+{
+	return fmtoptions(~int(__x) & 0x3f);
+}
+
+constexpr
+fmtoptions& operator&=(fmtoptions& __x, fmtoptions __y)
+{
+	__x = __x & __y;
+	return __x;
+}
+
+constexpr
+fmtoptions& operator|=(fmtoptions& __x, fmtoptions __y)
+{
+	__x = __x | __y;
+	return __x;
+}
+
+constexpr
+fmtoptions& operator^=(fmtoptions& __x, fmtoptions __y)
+{
+	__x = __x ^ __y;
+	return __x;
+}
+
 struct fmtshape
 {
 	constexpr auto facade() const
@@ -44,9 +101,24 @@ struct fmtshape
 		return ch_;
 	}
 
+	constexpr auto options() const
+	{
+		return fmtoptions(opts_);
+	}
+
 	constexpr void operator=(char ch)
 	{
 		ch_ = ch;
+	}
+
+	constexpr void operator=(fmtoptions opts)
+	{
+		opts_ = (unsigned char)opts;
+	}
+
+	constexpr void operator|=(fmtoptions opts)
+	{
+		opts_ |= (unsigned char)opts;
 	}
 
 private:
@@ -59,7 +131,7 @@ namespace detail
 
 enum op_type
 {
-	OP_RAW_S = 0x1,
+	OP_RAW_S = 1,
 	OP_RAW_C,
 	OP_FMT,
 };
@@ -246,6 +318,42 @@ int to_int(charT c)
 
 template <typename charT>
 constexpr
+auto parse_flags_c(bounded_reader<charT>& r)
+{
+	fmtshape sp;
+	sp = fmtoptions::right;
+
+	for (; r; r.incr())
+	{
+		// not clearing conflicting flags; the formatters have rights
+		// to interpret them.
+		switch (*r.ptr())
+		{
+		case STDEX_G(charT, '-'):
+			sp |= fmtoptions::left;
+			break;
+		case STDEX_G(charT, '+'):
+			sp |= fmtoptions::sign;
+			break;
+		case STDEX_G(charT, ' '):
+			sp |= fmtoptions::aligned_sign;
+			break;
+		case STDEX_G(charT, '#'):
+			sp |= fmtoptions::alt;
+			break;
+		case STDEX_G(charT, '0'):
+			sp |= fmtoptions::zero;
+			break;
+		default:
+			return sp;
+		}
+	}
+
+	return sp;
+}
+
+template <typename charT>
+constexpr
 fmtstack<charT> compile_c(charT const* s, size_t sz)
 {
 	using std::invalid_argument;
@@ -305,10 +413,11 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 				throw invalid_argument{ "index is not 1 to 9" };
 		}
 
+		auto sp = parse_flags_c(r);
+
 		if (r.empty())
 			throw invalid_argument{ "incomplete specification" };
 
-		fmtshape sp;
 		int width = -1;
 		int precision = -1;
 
@@ -370,6 +479,24 @@ inline namespace literals
 {
 constexpr
 auto operator"" _cfmt(char const* s, size_t sz)
+{
+	return detail::compile_c(s, sz);
+}
+
+constexpr
+auto operator"" _cfmt(wchar_t const* s, size_t sz)
+{
+	return detail::compile_c(s, sz);
+}
+
+constexpr
+auto operator"" _cfmt(char16_t const* s, size_t sz)
+{
+	return detail::compile_c(s, sz);
+}
+
+constexpr
+auto operator"" _cfmt(char32_t const* s, size_t sz)
 {
 	return detail::compile_c(s, sz);
 }
