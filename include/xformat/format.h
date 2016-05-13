@@ -282,6 +282,11 @@ struct bounded_reader
 		return findc(cur_, end_, c);
 	}
 
+	constexpr auto operator*() const
+	{
+		return *ptr();
+	}
+
 	constexpr auto ptr() const
 	{
 		return cur_;
@@ -327,7 +332,7 @@ auto parse_flags_c(bounded_reader<charT>& r)
 	{
 		// not clearing conflicting flags; the formatters have rights
 		// to interpret them.
-		switch (*r.ptr())
+		switch (*r)
 		{
 		case STDEX_G(charT, '-'):
 			sp |= fmtoptions::left;
@@ -388,7 +393,7 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 		if (auto d = np - r.ptr())
 		{
 			if (d == 1)
-				fstk.push(instruction(*r.ptr()));
+				fstk.push(instruction(*r));
 			else
 				fstk.push(instruction(s, r.ptr(), np));
 		}
@@ -401,7 +406,7 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 
 		// assert: !r.empty()
 		if (ac == 0)
-			sequential = !is_1to9(*r.ptr());
+			sequential = !is_1to9(*r);
 
 		if (sequential)
 			++ac;
