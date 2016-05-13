@@ -144,7 +144,7 @@ enum op_attr
 
 struct entry
 {
-	constexpr auto op() const
+	constexpr auto opcode() const
 	{
 		return op_type(op_ & 0b11);
 	}
@@ -200,7 +200,7 @@ struct fmtstack
 
 	static constexpr charT raw_char(detail::entry const& x)
 	{
-		assert(x.op() == detail::OP_RAW_C);
+		assert(x.opcode() == detail::OP_RAW_C);
 		return charT(x.arg);
 	}
 
@@ -515,7 +515,7 @@ decltype(auto) vformat(Formatter fter, fmtstack<charT> const& fstk, Tuple tp)
 {
 	for (auto&& et : fstk)
 	{
-		switch (et.op())
+		switch (et.opcode())
 		{
 		case OP_RAW_S:
 			fter.send(fstk.raw_string(et));
