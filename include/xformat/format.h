@@ -415,10 +415,30 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 			ac = to_int(r.read());
 			if (ac < 1 or ac > 9 or r.empty() or
 			    r.read() != STDEX_G(charT, '$'))
-				throw invalid_argument{ "index is not 1 to 9" };
+				throw invalid_argument{ "index is not 1-9" };
 		}
 
 		auto sp = parse_flags_c(r);
+
+		// ignore all length modifiers
+		if (r)
+		{
+			switch (auto c = *r)
+			{
+			case STDEX_G(charT, 'h'):
+			case STDEX_G(charT, 'l'):
+				r.incr();
+				if (r and *r == c)
+					r.incr();
+				break;
+			case STDEX_G(charT, 'j'):
+			case STDEX_G(charT, 'z'):
+			case STDEX_G(charT, 't'):
+			case STDEX_G(charT, 'L'):
+				r.incr();
+				break;
+			}
+		}
 
 		if (r.empty())
 			throw invalid_argument{ "incomplete specification" };
@@ -428,8 +448,56 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 
 		switch (r.read())
 		{
+		case STDEX_G(charT, 'd'):
+			sp = 'd';
+			break;
+		case STDEX_G(charT, 'i'):
+			sp = 'i';
+			break;
+		case STDEX_G(charT, 'o'):
+			sp = 'o';
+			break;
+		case STDEX_G(charT, 'u'):
+			sp = 'u';
+			break;
+		case STDEX_G(charT, 'x'):
+			sp = 'x';
+			break;
+		case STDEX_G(charT, 'X'):
+			sp = 'X';
+			break;
+		case STDEX_G(charT, 'f'):
+			sp = 'f';
+			break;
+		case STDEX_G(charT, 'F'):
+			sp = 'F';
+			break;
+		case STDEX_G(charT, 'e'):
+			sp = 'e';
+			break;
+		case STDEX_G(charT, 'E'):
+			sp = 'E';
+			break;
+		case STDEX_G(charT, 'g'):
+			sp = 'g';
+			break;
+		case STDEX_G(charT, 'G'):
+			sp = 'G';
+			break;
+		case STDEX_G(charT, 'a'):
+			sp = 'a';
+			break;
+		case STDEX_G(charT, 'A'):
+			sp = 'A';
+			break;
+		case STDEX_G(charT, 'c'):
+			sp = 'c';
+			break;
 		case STDEX_G(charT, 's'):
 			sp = 's';
+			break;
+		case STDEX_G(charT, 'p'):
+			sp = 'p';
 			break;
 		default:
 			throw invalid_argument{ "unknown format specifier" };
