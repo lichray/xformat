@@ -455,6 +455,7 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 		int width = -1;
 		int precision = -1;
 
+		// field width
 		if (r)
 		{
 			if (is_1to9(*r))
@@ -465,6 +466,21 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 				op |= REG_ARG1;
 				width = sequential ? ac++ : parse_position(r);
 			}
+		}
+
+		// precision
+		if (r and *r == STDEX_G(charT, '.'))
+		{
+			r.incr();
+			if (r and *r == STDEX_G(charT, '*'))
+			{
+				r.incr();
+				op |= REG_ARG2;
+				precision =
+				    sequential ? ac++ : parse_position(r);
+			}
+			else
+				precision = parse_int(r);
 		}
 
 		// ignore all length modifiers

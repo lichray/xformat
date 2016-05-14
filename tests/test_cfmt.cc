@@ -78,9 +78,6 @@ TEST_CASE("cfmt")
 	REQUIRE_THROWS_AS("%*d %1$d"_cfmt, std::invalid_argument);
 	REQUIRE_THROWS_AS("%1$d %*d"_cfmt, std::invalid_argument);
 	REQUIRE_THROWS_AS("%1$*d"_cfmt, std::invalid_argument);
-	// limitations
-	REQUIRE_THROWS_AS("%12$d"_cfmt, std::invalid_argument);
-	REQUIRE_THROWS_AS("%*12$d"_cfmt, std::invalid_argument);
 
 	format(fmttest([](fmtshape sp, int w, ...)
 	               {
@@ -100,4 +97,58 @@ TEST_CASE("cfmt")
 	                  std::invalid_argument);
 	REQUIRE_THROWS_AS(format(fmtnull(), u"%*d"_cfmt, "", 3),
 	                  std::invalid_argument);
+
+	format(fmttest([](fmtshape sp, int w, int p)
+	               {
+		               REQUIRE(sp.facade() == 'u');
+		               REQUIRE((sp.options() & fmtoptions::zero) !=
+		                       fmtoptions::none);
+		               REQUIRE(w == -1);
+		               REQUIRE(p == 7);
+		       }),
+	       u"%0.7u"_cfmt, 0);
+
+	format(fmttest([](fmtshape sp, int w, int p)
+	               {
+		               REQUIRE(w == -1);
+		               REQUIRE(p == 0);
+		       }),
+	       u"%.u"_cfmt, 0);
+
+	REQUIRE_THROWS_AS("%."_cfmt, std::invalid_argument);
+	REQUIRE_THROWS_AS("%.*d %1$d"_cfmt, std::invalid_argument);
+	REQUIRE_THROWS_AS("%1$d %.*d"_cfmt, std::invalid_argument);
+	REQUIRE_THROWS_AS("%1$.*d"_cfmt, std::invalid_argument);
+	REQUIRE_THROWS_AS("%*.*1$d"_cfmt, std::invalid_argument);
+	REQUIRE_THROWS_AS("%*1$.*d"_cfmt, std::invalid_argument);
+
+	format(fmttest([](fmtshape sp, int, int p)
+	               {
+		               REQUIRE(p == 12);
+		       }),
+	       u"%0.*lu %.12d"_cfmt, 12, 3, 4);
+
+	format(fmttest([](fmtshape sp, int, int p)
+	               {
+		               REQUIRE(p == 12);
+		       }),
+	       u"%2$.*1$d %3$.*1$d"_cfmt, 12UL, 3, 4);
+
+	format(fmttest([](fmtshape sp, int w, int p)
+	               {
+		               REQUIRE(w == 12);
+		               REQUIRE(p == 3);
+		       }),
+	       u"%0*.*lu"_cfmt, 12, 3, 4);
+
+	format(fmttest([](fmtshape sp, int w, int p)
+	               {
+		               REQUIRE(w == 3);
+		               REQUIRE(p == 12);
+		       }),
+	       u"%1$*2$.*1$d"_cfmt, 12, 3);
+
+	// limitations
+	REQUIRE_THROWS_AS("%*12$d"_cfmt, std::invalid_argument);
+	REQUIRE_THROWS_AS("%.*12$d"_cfmt, std::invalid_argument);
 }
