@@ -569,6 +569,15 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 	return fstk;
 }
 
+#ifndef XFORMAT_HEADER_ONLY
+
+extern template fmtstack<char> compile_c(char const*, size_t);
+extern template fmtstack<wchar_t> compile_c(wchar_t const*, size_t);
+extern template fmtstack<char16_t> compile_c(char16_t const*, size_t);
+extern template fmtstack<char32_t> compile_c(char32_t const*, size_t);
+
+#endif
+
 template <typename T, typename = void>
 struct do_int_cast
 {
