@@ -36,8 +36,15 @@ inline
 decltype(auto) printf(std::basic_ostream<charT, traits>& out,
                       fmtstack<charT> const& fstk, Args&&... args)
 {
-	return format(ostream_formatter<charT, traits>(out), fstk,
-	              std::forward<Args>(args)...);
+	auto fl = out.flags();
+	auto w = out.width(0);
+	auto p = out.precision();
+	auto&& r = format(ostream_formatter<charT, traits>(out), fstk,
+	                  std::forward<Args>(args)...);
+	out.flags(fl);
+	out.width(w);
+	out.precision(p);
+	return r;
 }
 
 template <typename charT, typename traits, typename... Args>

@@ -66,11 +66,81 @@ struct ostream_formatter : ostream_outputter<charT, traits>
 {
 	using outputter_type = ostream_outputter<charT, traits>;
 	using outputter_type::ostream_outputter;
+	using outputter_type::state;
 
 	template <typename T>
 	void format(fmtshape shape, int width, int precision, T const& v)
 	{
-		this->state() << v;
+		potentially_formattable(shape, width, precision, v);
+	}
+
+private:
+	using os = typename outputter_type::ostream_type;
+
+	template <typename T>
+	void potentially_formattable(fmtshape sp, int w, int p, T const& v)
+	{
+		auto fl = state().flags() & os::unitbuf;
+		if (w != -1)
+			state().width(w);
+		state().precision(p);
+
+		if (has(sp, fmtoptions::sign))
+			fl |= os::showpos;
+		if (has(sp, fmtoptions::alt))
+			fl |= os::showbase | os::showpoint;
+		if (has(sp, fmtoptions::left))
+			fl |= os::left;
+		else if (has(sp, fmtoptions::zero))
+		{
+			auto fc = state().fill(STDEX_G(charT, '0'));
+			state().flags(fl | os::internal | to_flags(sp));
+			state() << v;
+			state().fill(fc);
+			return;
+		}
+
+		state().flags(fl | to_flags(sp));
+		state() << v;
+	}
+
+	constexpr static auto to_flags(fmtshape sp) -> typename os::fmtflags
+	{
+		switch (sp.facade())
+		{
+		case 'd':
+		case 'u':
+			return os::dec;
+		case 'o':
+			return os::oct;
+		case 'x':
+			return os::hex;
+		case 'X':
+			return os::hex | os::uppercase;
+		case 'f':
+			return os::fixed;
+		case 'F':
+			return os::fixed | os::uppercase;
+		case 'e':
+			return os::scientific;
+		case 'E':
+			return os::scientific | os::uppercase;
+		case 'G':
+			return os::uppercase;
+		case 'a':
+			return os::fixed | os::scientific;
+		case 'A':
+			return os::fixed | os::scientific | os::uppercase;
+		case 's':
+			return os::boolalpha;
+		default:
+			return {};
+		}
+	}
+
+	constexpr static auto has(fmtshape sp, fmtoptions opt)
+	{
+		return (sp.options() & opt) != fmtoptions::none;
 	}
 };
 
