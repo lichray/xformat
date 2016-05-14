@@ -65,4 +65,39 @@ TEST_CASE("cfmt")
 		               REQUIRE(sp.facade() == 'u');
 		       }),
 	       u"%lu"_cfmt, 0);
+
+	format(fmttest([](fmtshape sp, int w, ...)
+	               {
+		               REQUIRE(sp.facade() == 'u');
+		               REQUIRE((sp.options() & fmtoptions::zero) !=
+		                       fmtoptions::none);
+		               REQUIRE(w == 7);
+		       }),
+	       u"%07lu"_cfmt, 0);
+
+	REQUIRE_THROWS_AS("%*d %1$d"_cfmt, std::invalid_argument);
+	REQUIRE_THROWS_AS("%1$d %*d"_cfmt, std::invalid_argument);
+	REQUIRE_THROWS_AS("%1$*d"_cfmt, std::invalid_argument);
+	// limitations
+	REQUIRE_THROWS_AS("%12$d"_cfmt, std::invalid_argument);
+	REQUIRE_THROWS_AS("%*12$d"_cfmt, std::invalid_argument);
+
+	format(fmttest([](fmtshape sp, int w, ...)
+	               {
+		               REQUIRE(w == 12);
+		       }),
+	       u"%0*lu %12d"_cfmt, 12, 3, 4);
+
+	format(fmttest([](fmtshape sp, int w, ...)
+	               {
+		               REQUIRE(w == 12);
+		       }),
+	       u"%2$*1$d %3$*1$d"_cfmt, 12UL, 3, 4);
+
+	REQUIRE_NOTHROW(u"%2$*1$d"_cfmt);
+	REQUIRE_NOTHROW(u"%*d"_cfmt);
+	REQUIRE_THROWS_AS(format(fmtnull(), u"%2$*1$d"_cfmt, 12.0, 3),
+	                  std::invalid_argument);
+	REQUIRE_THROWS_AS(format(fmtnull(), u"%*d"_cfmt, "", 3),
+	                  std::invalid_argument);
 }

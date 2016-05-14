@@ -43,7 +43,6 @@ TEST_CASE("simple")
 
 	REQUIRE_THROWS_AS("%s and %1$s"_cfmt, std::invalid_argument);
 	REQUIRE_THROWS_AS("%1$s and %s"_cfmt, std::invalid_argument);
-	REQUIRE_THROWS_AS("%s and %1s"_cfmt, std::invalid_argument);
 	REQUIRE_THROWS_AS("%1$s and %1"_cfmt, std::invalid_argument);
 	REQUIRE_THROWS_AS("%0$s"_cfmt, std::invalid_argument);
 	REQUIRE_THROWS_AS("%$s"_cfmt, std::invalid_argument);

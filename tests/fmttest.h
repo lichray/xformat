@@ -5,7 +5,19 @@
 
 using std::experimental::string_view;
 
-struct fmttest
+struct null_outputter
+{
+	template <typename T>
+	void send(T)
+	{
+	}
+
+	void state()
+	{
+	}
+};
+
+struct fmttest : null_outputter
 {
 	template <typename F,
 	          typename = std::enable_if_t<
@@ -17,15 +29,6 @@ struct fmttest
 	}
 
 	template <typename T>
-	void send(T)
-	{
-	}
-
-	void state()
-	{
-	}
-
-	template <typename T>
 	void format(stdex::fmtshape shape, int width, int precision, T const&)
 	{
 		f_(shape, width, precision);
@@ -33,4 +36,12 @@ struct fmttest
 
 private:
 	std::function<void(stdex::fmtshape, int, int)> f_;
+};
+
+struct fmtnull : null_outputter
+{
+	template <typename T>
+	void format(stdex::fmtshape, int, int, T const&)
+	{
+	}
 };

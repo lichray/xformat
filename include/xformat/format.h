@@ -36,6 +36,7 @@ namespace stdex
 {
 
 using std::experimental::basic_string_view;
+using std::enable_if_t;
 
 enum class fmtoptions
 {
@@ -147,6 +148,11 @@ struct entry
 	constexpr auto opcode() const
 	{
 		return op_type(op_ & 0b11);
+	}
+
+	constexpr bool has(op_attr attr) const
+	{
+		return (op_ & attr) != 0;
 	}
 
 	unsigned short op_;
@@ -316,9 +322,39 @@ bool is_1to9(charT c)
 
 template <typename charT>
 constexpr
+bool is_0to9(charT c)
+{
+	return STDEX_G(charT, '0') <= c and c <= STDEX_G(charT, '9');
+}
+
+template <typename charT>
+constexpr
 int to_int(charT c)
 {
 	return int(c - STDEX_G(charT, '0'));
+}
+
+template <typename charT>
+constexpr
+int parse_int(bounded_reader<charT>& r)
+{
+	int n = 0;
+	for (; r and is_0to9(*r); r.incr())
+	{
+		n *= 10;
+		n += to_int(*r);
+	}
+	return n;
+}
+
+template <typename charT>
+constexpr
+int parse_position(bounded_reader<charT>& r)
+{
+	int n = to_int(r.read());
+	if (n < 1 or n > 9 or r.empty() or r.read() != STDEX_G(charT, '$'))
+		throw std::invalid_argument{ "index is not 1-9$" };
+	return n;
 }
 
 template <typename charT>
@@ -411,14 +447,25 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 		if (sequential)
 			++ac;
 		else
-		{
-			ac = to_int(r.read());
-			if (ac < 1 or ac > 9 or r.empty() or
-			    r.read() != STDEX_G(charT, '$'))
-				throw invalid_argument{ "index is not 1-9" };
-		}
+			ac = parse_position(r);
 
 		auto sp = parse_flags_c(r);
+
+		unsigned short op = OP_FMT;
+		int width = -1;
+		int precision = -1;
+
+		if (r)
+		{
+			if (is_1to9(*r))
+				width = parse_int(r);
+			else if (*r == STDEX_G(charT, '*'))
+			{
+				r.incr();
+				op |= REG_ARG1;
+				width = sequential ? ac++ : parse_position(r);
+			}
+		}
 
 		// ignore all length modifiers
 		if (r)
@@ -442,9 +489,6 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 
 		if (r.empty())
 			throw invalid_argument{ "incomplete specification" };
-
-		int width = -1;
-		int precision = -1;
 
 		switch (r.read())
 		{
@@ -503,11 +547,39 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 			throw invalid_argument{ "unknown format specifier" };
 		}
 
-		fstk.push({ OP_FMT, sp, ac, width, precision });
+		fstk.push({ op, sp, ac, width, precision });
 	}
 
 	return fstk;
 }
+
+template <typename T, typename = void>
+struct do_int_cast
+{
+	[[noreturn]] static int fn(T const&)
+	{
+		throw std::invalid_argument{ "not an integer" };
+	}
+};
+
+template <typename T>
+struct do_int_cast<T, enable_if_t<std::is_convertible<T, int>::value and
+                                  not std::is_floating_point<T>::value>>
+{
+	constexpr static int fn(_param_type_t<T> v)
+	{
+		return static_cast<int>(v);
+	}
+};
+
+struct int_cast
+{
+	template <typename T>
+	constexpr int operator()(T const& v) const
+	{
+		return do_int_cast<T>::fn(v);
+	}
+};
 
 template <typename charT, typename Formatter, typename Tuple>
 inline
@@ -524,13 +596,22 @@ decltype(auto) vformat(Formatter fter, fmtstack<charT> const& fstk, Tuple tp)
 			fter.send(fstk.raw_char(et));
 			break;
 		case OP_FMT:
-			visit1_at(et.arg,
-			          [&](auto&& x)
-			          {
-				          fter.format(et.shape, et.arg1,
-				                      et.arg2, x);
-				  },
-			          tp);
+			visit1_at(
+			    et.arg,
+			    [
+			      shape = et.shape,
+			      w = et.has(REG_ARG1)
+				      ? visit1_at<int>(et.arg1, int_cast(), tp)
+				      : et.arg1,
+			      p = et.has(REG_ARG2)
+				      ? visit1_at<int>(et.arg2, int_cast(), tp)
+				      : et.arg2,
+			      &fter
+			    ](auto&& x)
+			    {
+				    fter.format(shape, w, p, x);
+			    },
+			    tp);
 			break;
 		}
 	}
