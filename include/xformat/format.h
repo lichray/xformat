@@ -119,7 +119,7 @@ struct fmtshape
 
 	constexpr void operator|=(fmtoptions opts)
 	{
-		opts_ |= (unsigned char)opts;
+		*this = options() | opts;
 	}
 
 private:
