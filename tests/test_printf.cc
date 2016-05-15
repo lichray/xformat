@@ -189,3 +189,14 @@ TEST_CASE("printf")
 	test("%#0.12G", 3.14);
 	test("%#0+.12G", 3.14);
 }
+
+TEST_CASE("printf extras")
+{
+	std::stringstream ss;
+
+	printf(ss, "%8s", true);
+	REQUIRE(str(ss) == "    true");
+
+	printf(ss, "%8s", false);
+	REQUIRE(str(ss) == "   false");
+}
