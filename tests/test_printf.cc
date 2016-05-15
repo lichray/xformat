@@ -248,4 +248,16 @@ TEST_CASE("printf extras")
 
 	printf(ss, "%8s", false);
 	REQUIRE(str(ss) == "   false");
+
+	printf(ss, "%-7s", false);
+	REQUIRE(str(ss) == "false  ");
+
+	printf(ss, "%7d", true);
+	REQUIRE(str(ss) == "      1");
+
+	printf(ss, "%7.4d", true);
+	REQUIRE(str(ss) == "      1");
+
+	printf(ss, "%- 7d", true);
+	REQUIRE(str(ss) == "1      ");
 }

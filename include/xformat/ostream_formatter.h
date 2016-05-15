@@ -99,6 +99,14 @@ struct ostream_formatter : ostream_outputter<charT, traits>
 		print_string_ref(sp, w, p, s);
 	}
 
+	void format(fmtshape sp, int w, int p, bool v)
+	{
+		if (sp.facade() == 's')
+			print_string_ref<os::boolalpha>(sp, w, p, v);
+		else
+			potentially_formattable(sp, w, p, v);
+	}
+
 private:
 	using os = typename outputter_type::ostream_type;
 	using fmtflags = typename os::fmtflags;
@@ -162,11 +170,11 @@ private:
 		state() << v;
 	}
 
-	template <typename T>
+	template <fmtflags additional = fmtflags(), typename T>
 	__attribute__((always_inline))
 	void print_string_ref(fmtshape sp, int w, int p, T const& v)
 	{
-		auto fl = base_flags();
+		auto fl = base_flags() | additional;
 		if (has(sp, fmtoptions::left))
 			fl |= os::left;
 		state().flags(fl);
