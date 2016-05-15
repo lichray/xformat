@@ -283,6 +283,12 @@ struct bounded_reader
 		return *cur_++;
 	}
 
+	constexpr bool look_ahead(charT c) const
+	{
+		auto p = ptr();
+		return ++p < eptr() and *p == c;
+	}
+
 	constexpr auto find(charT c) const
 	{
 		return findc(cur_, end_, c);
@@ -442,7 +448,8 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 
 		// assert: !r.empty()
 		if (ac == 0)
-			sequential = !is_1to9(*r);
+			sequential = !(is_1to9(*r) and
+			               r.look_ahead(STDEX_G(charT, '$')));
 
 		if (sequential)
 			++ac;
