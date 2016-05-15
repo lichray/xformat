@@ -1,6 +1,7 @@
 #include <xformat/ioformat.h>
 
 #include "catch.hpp"
+#include "streamtest.h"
 
 #include <string>
 #include <stdio.h>
@@ -26,24 +27,22 @@ TEST_CASE("printf guarantees")
 	ss.fill('_');
 	printf(ss, "mixing|%#+8.3ff", 0.12);
 
-	REQUIRE(ss.str() == "mixing|__+0.120f");
+	REQUIRE(str(ss) == "mixing|__+0.120f");
 	REQUIRE(ss.width() == 12);
 	REQUIRE(ss.precision() == 6);
 
-	ss.str({});
 	printf(ss, "%3$0+*2$u|%4$-*2$.*1$E", 3, 10, 42, 0.12);
 
-	REQUIRE(ss.str() == "+000000042|1.200E-01_");
+	REQUIRE(str(ss) == "+000000042|1.200E-01_");
 	REQUIRE(ss.width() == 12);
 	REQUIRE(ss.precision() == 6);
 
-	ss.str({});
 	ss.fill(' ');
 	printf(ss, "%0*u|%-*.*E", 8, 42, 10, 3, 0.12);
 	auto s = aprintf("%0*u|%-*.*E", 8, 42, 10, 3, 0.12);
 
 	REQUIRE(ss.str() == s);
-	REQUIRE(ss.str() == "00000042|1.200E-01 ");
+	REQUIRE(str(ss) == "00000042|1.200E-01 ");
 }
 
 TEST_CASE("printf")
@@ -53,8 +52,7 @@ TEST_CASE("printf")
 	{
 		auto s = aprintf(v...);
 		printf(ss, v...);
-		CHECK(ss.str() == s);
-		ss.str({});
+		CHECK(str(ss) == s);
 	};
 
 	test("%%|%c|%s|%d|%i|%lu|%llx", '-', "", 42, 43, 44ul, 45ull);

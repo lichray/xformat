@@ -1,6 +1,7 @@
 #include <xformat/ioformat.h>
 
 #include "catch.hpp"
+#include "streamtest.h"
 
 #include <sstream>
 
@@ -20,23 +21,19 @@ TEST_CASE("simple")
 	REQUIRE(ss.str() == "x");
 
 	REQUIRE(printf(ss, "-man"));
-	REQUIRE(ss.str() == "x-man");
+	REQUIRE(str(ss) == "x-man");
 
-	ss.str({});
 	REQUIRE(printf(ss, "%s", 42));
-	REQUIRE(ss.str() == "42");
+	REQUIRE(str(ss) == "42");
 
-	ss.str({});
 	REQUIRE(printf(ss, "%1$s", 42));
-	REQUIRE(ss.str() == "42");
+	REQUIRE(str(ss) == "42");
 
-	ss.str({});
 	REQUIRE(printf(ss, "%s%%", 42));
-	REQUIRE(ss.str() == "42%");
+	REQUIRE(str(ss) == "42%");
 
-	ss.str({});
 	REQUIRE(printf(ss, "%%akka"));
-	REQUIRE(ss.str() == "%akka");
+	REQUIRE(str(ss) == "%akka");
 
 	REQUIRE_THROWS_AS("%k"_cfmt, std::invalid_argument);
 	REQUIRE_THROWS_AS("only1%"_cfmt, std::invalid_argument);
@@ -53,25 +50,22 @@ TEST_CASE("simple")
 	REQUIRE_THROWS_AS(printf(ss, "%3$s", 1, 2), std::out_of_range);
 
 	ss.str({});
+
 	REQUIRE(printf(ss, "%s\n", 42));
-	REQUIRE(ss.str() == "42\n");
+	REQUIRE(str(ss) == "42\n");
 
-	ss.str({});
 	REQUIRE(printf(ss, "hello, %s\n"_cfmt, "world"));
-	REQUIRE(ss.str() == "hello, world\n");
+	REQUIRE(str(ss) == "hello, world\n");
 
-	ss.str({});
 	REQUIRE(printf(ss, "%s, %%%s%%, %s-body", "hey", 'u', 3));
-	REQUIRE(ss.str() == "hey, %u%, 3-body");
+	REQUIRE(str(ss) == "hey, %u%, 3-body");
 
-	ss.str({});
 	REQUIRE(printf(ss, "%2$s, %%%2$s%%, %3$s-body", "hey", 'u', 3));
-	REQUIRE(ss.str() == "u, %u%, 3-body");
+	REQUIRE(str(ss) == "u, %u%, 3-body");
 
-	ss.str({});
 	int i = 3;
 	printf(ss, "%s", std::ref(i));
-	REQUIRE(ss.str() == "3");
+	REQUIRE(str(ss) == "3");
 }
 
 TEST_CASE("limitations")
