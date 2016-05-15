@@ -135,6 +135,8 @@ private:
 			state().fill(fc);
 			return;
 		}
+		else if (has(sp, fmtoptions::right))
+			fl |= os::right;
 
 		state().flags(fl | to_flags(sp));
 		state() << v;
