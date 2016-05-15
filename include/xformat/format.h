@@ -38,6 +38,9 @@ namespace stdex
 using std::experimental::basic_string_view;
 using std::enable_if_t;
 
+template <bool V>
+using bool_constant = std::integral_constant<bool, V>;
+
 enum class fmtoptions
 {
 	none,
@@ -400,6 +403,27 @@ auto parse_flags_c(bounded_reader<charT>& r)
 }
 
 template <typename charT>
+constexpr char charcvt(charT c, std::true_type)
+{
+	return char(c);
+}
+
+template <typename charT>
+constexpr char charcvt(charT c, std::false_type)
+{
+	static_assert(STDEX_G(charT, 'A') == 65,
+	              "non-execution character set is not Unicode");
+	return "ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz"
+	    [c - 65];
+}
+
+template <typename charT>
+constexpr char charcvt(charT c)
+{
+	return charcvt(c, bool_constant<STDEX_G(charT, 'A') == 'A'>());
+}
+
+template <typename charT>
 constexpr
 fmtstack<charT> compile_c(charT const* s, size_t sz)
 {
@@ -513,58 +537,26 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 		if (r.empty())
 			throw invalid_argument{ "incomplete specification" };
 
-		switch (r.read())
+		switch (auto c = r.read())
 		{
 		case STDEX_G(charT, 'd'):
-			sp = 'd';
-			break;
 		case STDEX_G(charT, 'i'):
-			sp = 'i';
-			break;
 		case STDEX_G(charT, 'o'):
-			sp = 'o';
-			break;
 		case STDEX_G(charT, 'u'):
-			sp = 'u';
-			break;
 		case STDEX_G(charT, 'x'):
-			sp = 'x';
-			break;
 		case STDEX_G(charT, 'X'):
-			sp = 'X';
-			break;
 		case STDEX_G(charT, 'f'):
-			sp = 'f';
-			break;
 		case STDEX_G(charT, 'F'):
-			sp = 'F';
-			break;
 		case STDEX_G(charT, 'e'):
-			sp = 'e';
-			break;
 		case STDEX_G(charT, 'E'):
-			sp = 'E';
-			break;
 		case STDEX_G(charT, 'g'):
-			sp = 'g';
-			break;
 		case STDEX_G(charT, 'G'):
-			sp = 'G';
-			break;
 		case STDEX_G(charT, 'a'):
-			sp = 'a';
-			break;
 		case STDEX_G(charT, 'A'):
-			sp = 'A';
-			break;
 		case STDEX_G(charT, 'c'):
-			sp = 'c';
-			break;
 		case STDEX_G(charT, 's'):
-			sp = 's';
-			break;
 		case STDEX_G(charT, 'p'):
-			sp = 'p';
+			sp = charcvt(c);
 			break;
 		default:
 			throw invalid_argument{ "unknown format specifier" };
