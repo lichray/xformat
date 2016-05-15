@@ -58,7 +58,12 @@ TEST_CASE("printf")
 	test("%%|%c|%s|%d|%i|%lu|%llx", '-', "", 42, 43, 44ul, 45ull);
 
 	test("%2c", 'a');
+
 	test("%12s", "str");
+	test("%12.4s", "A long time ago");
+	char s[] = "in a galaxy far far away";
+	auto p = s;
+	test("%12.4s", p);
 
 	test("%p", (void*)&ss);
 	test("%12p", (void*)&ss);

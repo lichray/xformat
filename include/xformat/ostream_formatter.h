@@ -61,6 +61,16 @@ private:
 	ostream_type& out_;
 };
 
+template <typename T>
+struct superficial
+{
+};
+
+template <typename T>
+struct superficial<T const*> : superficial<T*>
+{
+};
+
 template <typename charT, typename traits>
 struct ostream_formatter : ostream_outputter<charT, traits>
 {
@@ -71,16 +81,29 @@ struct ostream_formatter : ostream_outputter<charT, traits>
 	template <typename T>
 	void format(fmtshape shape, int width, int precision, T const& v)
 	{
-		potentially_formattable(shape, width, precision, v);
+		print(shape, width, precision, v, superficial<T>());
 	}
 
 private:
 	using os = typename outputter_type::ostream_type;
+	using fmtflags = typename os::fmtflags;
+
+	template <typename T>
+	void print(fmtshape sp, int w, int p, T const& v, ...)
+	{
+		potentially_formattable(sp, w, p, v);
+	}
+
+	template <typename T>
+	void print(fmtshape sp, int w, int p, T s, superficial<char*>)
+	{
+		print_chars(sp, w, p, s);
+	}
 
 	template <typename T>
 	void potentially_formattable(fmtshape sp, int w, int p, T const& v)
 	{
-		auto fl = state().flags() & os::unitbuf;
+		auto fl = base_flags();
 		if (w != -1)
 			state().width(w);
 		state().precision(p);
@@ -104,7 +127,34 @@ private:
 		state() << v;
 	}
 
-	constexpr static auto to_flags(fmtshape sp) -> typename os::fmtflags
+	template <typename T>
+	void print_chars(fmtshape sp, int w, int p, T const* s)
+	{
+		if (p == -1 or sp.facade() != 's')
+			print_string_ref(sp, w, p, s);
+		else
+			print_string_ref(sp, w, p,
+			                 basic_string_view<T>(s, size_t(p)));
+	}
+
+	template <typename T>
+	void print_string_ref(fmtshape sp, int w, int p, T v)
+	{
+		auto fl = base_flags();
+		if (has(sp, fmtoptions::left))
+			fl |= os::left;
+		state().flags(fl);
+		if (w != -1)
+			state().width(w);
+		state() << v;
+	}
+
+	fmtflags base_flags()
+	{
+		return state().flags() & os::unitbuf;
+	}
+
+	constexpr static fmtflags to_flags(fmtshape sp)
 	{
 		switch (sp.facade())
 		{
