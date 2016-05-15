@@ -84,6 +84,19 @@ struct ostream_formatter : ostream_outputter<charT, traits>
 		print(shape, width, precision, v, superficial<T>());
 	}
 
+	void format(fmtshape sp, int w, int p,
+	            basic_string_view<charT, traits> sv)
+	{
+		print_string_ref(sp, w, p, sv);
+	}
+
+	template <typename Allocator>
+	void format(fmtshape sp, int w, int p,
+	            std::basic_string<charT, traits, Allocator> const& s)
+	{
+		print_string_ref(sp, w, p, s);
+	}
+
 private:
 	using os = typename outputter_type::ostream_type;
 	using fmtflags = typename os::fmtflags;
@@ -138,7 +151,8 @@ private:
 	}
 
 	template <typename T>
-	void print_string_ref(fmtshape sp, int w, int p, T v)
+	__attribute__((always_inline))
+	void print_string_ref(fmtshape sp, int w, int p, T const& v)
 	{
 		auto fl = base_flags();
 		if (has(sp, fmtoptions::left))

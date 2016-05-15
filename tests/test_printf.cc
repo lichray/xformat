@@ -43,6 +43,14 @@ TEST_CASE("printf guarantees")
 
 	REQUIRE(ss.str() == s);
 	REQUIRE(str(ss) == "00000042|1.200E-01 ");
+
+	std::string st = "test";
+	printf(ss, "%-7.s", st);
+	s = str(ss);
+	printf(ss, "%-7.s", std::experimental::string_view(st));
+
+	REQUIRE(s == "test   ");
+	REQUIRE(str(ss) == s);
 }
 
 TEST_CASE("printf")
