@@ -5,15 +5,28 @@
 
 #include <string>
 #include <stdio.h>
+#include <wchar.h>
 #include <assert.h>
 
 using namespace stdex;
 
 template <typename... T>
-auto aprintf(T... v)
+auto gprintf(char* buf, size_t sz, char const* fmt, T... v)
 {
-	std::string s(100, 'X');
-	auto n = snprintf(&*s.begin(), s.size(), v...);
+	return ::snprintf(buf, sz, fmt, v...);
+}
+
+template <typename... T>
+auto gprintf(wchar_t* buf, size_t sz, wchar_t const* fmt, T... v)
+{
+	return ::swprintf(buf, sz, fmt, v...);
+}
+
+template <typename charT, typename... T>
+auto aprintf(charT const* fmt, T... v)
+{
+	std::basic_string<charT> s(100, 'X');
+	auto n = gprintf(&*s.begin(), s.size(), fmt, v...);
 	assert(n >= 0);
 	s.resize(size_t(n));
 	return s;
@@ -73,8 +86,8 @@ TEST_CASE("printf")
 	auto p = s;
 	test("%12.4s", p);
 
-	test("%p", (void*)&ss);
-	test("%12p", (void*)&ss);
+	test("%p", &ss);
+	test("%12p", &ss);
 
 	test("%12d", 42);
 	test("%-12d", 42);
@@ -201,6 +214,29 @@ TEST_CASE("printf")
 	test("%-0.12G", 3.14);
 	test("%#0.12G", 3.14);
 	test("%#0+.12G", 3.14);
+}
+
+TEST_CASE("wprintf")
+{
+	std::wstringstream ss;
+	auto test = [&](auto... v)
+	{
+		auto s = aprintf(v...);
+		printf(ss, v...);
+		CHECK(str(ss) == s);
+	};
+
+	test(L"%12s", "str");
+	test(L"%12.4s", "A long time ago");
+	char s[] = "in a galaxy far far away";
+	auto p = s;
+	test(L"%12.4s", p);
+
+	test(L"%12ls", L"str");
+	test(L"%12.4ls", L"There was an old lady called Wright");
+	wchar_t ws[] = L" who could travel much faster than light.";
+	auto wp = ws;
+	test(L"%12.4ls", wp);
 }
 
 TEST_CASE("printf extras")

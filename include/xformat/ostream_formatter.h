@@ -64,11 +64,13 @@ private:
 template <typename T>
 struct superficial
 {
+	using type = T;
 };
 
 template <typename T>
 struct superficial<T const*> : superficial<T*>
 {
+	using type = T*;
 };
 
 template <typename charT, typename traits>
@@ -108,9 +110,27 @@ private:
 	}
 
 	template <typename T>
+	void print(fmtshape sp, int w, int p, T s, superficial<charT*>)
+	{
+		if (p == -1 or sp.facade() != 's')
+			print_string_ref(sp, w, p, s);
+		else
+			print_string_ref(
+			    sp, w, p,
+			    basic_string_view<charT, traits>(s, size_t(p)));
+	}
+
+	template <typename T,
+	          typename = std::enable_if_t<
+	              not std::is_same<typename superficial<T>::type,
+	                               charT*>::value>>
 	void print(fmtshape sp, int w, int p, T s, superficial<char*>)
 	{
-		print_chars(sp, w, p, s);
+		if (p == -1 or sp.facade() != 's')
+			print_string_ref(sp, w, p, s);
+		else
+			print_string_ref(sp, w, p,
+			                 std::string(s, size_t(p)).data());
 	}
 
 	template <typename T>
@@ -140,16 +160,6 @@ private:
 
 		state().flags(fl | to_flags(sp));
 		state() << v;
-	}
-
-	template <typename T>
-	void print_chars(fmtshape sp, int w, int p, T const* s)
-	{
-		if (p == -1 or sp.facade() != 's')
-			print_string_ref(sp, w, p, s);
-		else
-			print_string_ref(sp, w, p,
-			                 basic_string_view<T>(s, size_t(p)));
 	}
 
 	template <typename T>
