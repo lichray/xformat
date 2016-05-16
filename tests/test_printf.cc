@@ -261,23 +261,23 @@ TEST_CASE("printf")
 
 	test("%12.d", 0);
 	test("%-12.d", 0);
-	//test("%+12.d", 0);
+	test("%+12.d", 0);
 	test("%012.d", 0);
 	test("%-012.d", 0);
 	test("% 12.d", 0);
 	test("% -12.d", 0);
-	//test("% +12.d", 0);
+	test("% +12.d", 0);
 	test("% 012.d", 0);
 	test("% -012.d", 0);
 
 	test("%12.i", 0);
 	test("%-12.i", 0);
-	//test("%+12.i", 0);
+	test("%+12.i", 0);
 	test("%012.i", 0);
 	test("%-012.i", 0);
 	test("% 12.i", 0);
 	test("% -12.i", 0);
-	//test("% +12.i", 0);
+	test("% +12.i", 0);
 	test("% 012.i", 0);
 	test("% -012.i", 0);
 
@@ -296,18 +296,18 @@ TEST_CASE("printf")
 	test("%-12.o", 0u);
 	test("%+12.o", 0u);
 	test("%012.o", 0u);
-	//test("%#12.o", 0u);
+	test("%#12.o", 0u);
 	test("%-012.o", 0u);
-	//test("%#012.o", 0u);
-	//test("%#0+12.o", 0u);
+	test("%#012.o", 0u);
+	test("%#0+12.o", 0u);
 	test("% 12.o", 0u);
 	test("% -12.o", 0u);
 	test("% +12.o", 0u);
 	test("% 012.o", 0u);
-	//test("% #12.o", 0u);
+	test("% #12.o", 0u);
 	test("% -012.o", 0u);
-	//test("% #012.o", 0u);
-	//test("% #0+12.o", 0u);
+	test("% #012.o", 0u);
+	test("% #0+12.o", 0u);
 
 	test("%12.x", 0u);
 	test("%-12.x", 0u);

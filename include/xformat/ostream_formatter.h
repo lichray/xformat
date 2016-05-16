@@ -235,15 +235,23 @@ private:
 	    -> enable_if_t<std::is_integral<T>::value>
 	{
 		int d;
+		charT sign{};
 		switch (sp.facade())
 		{
 		case 'd':
 		case 'i':
+			if (has(sp, fmtoptions::sign))
+				sign = STDEX_G(charT, '+');
 		case 'u':
 			d = lexical_width<10>(v);
 			break;
 		case 'o':
-			d = lexical_width<8>(v) + has(sp, fmtoptions::alt);
+			d = lexical_width<8>(v);
+			if (has(sp, fmtoptions::alt))
+			{
+				d += 1;
+				sign = STDEX_G(charT, '0');
+			}
 			break;
 		case 'x':
 		case 'X':
@@ -254,7 +262,13 @@ private:
 		}
 
 		if (p == 0 and v == 0)
-			return print_string_ref(sp, w, p, view_type());
+		{
+			if (sign)
+				return print_string_ref(sp, w, p, sign);
+			else
+				return print_string_ref(sp, w, p, view_type());
+		}
+
 		if (p <= d)
 			return potentially_formattable(sp, w, p, v, fl,
 			                               p != -1);
@@ -297,8 +311,7 @@ private:
 		    .print_basic_arithmetic(sp, w, p, v, os::showpos);
 		auto s = dout.str();
 		auto it = std::find(s.begin(), s.end(), STDEX_G(charT, '+'));
-		if (it != s.end())
-			*it = dout.fill();
+		*it = dout.fill();
 		state().write(s.data(), std::streamsize(s.size()));
 	}
 
