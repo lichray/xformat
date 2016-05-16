@@ -32,6 +32,13 @@ auto aprintf(charT const* fmt, T... v)
 	return s;
 }
 
+#define test(...)                                       \
+	do                                              \
+	{                                               \
+		printf(ss, __VA_ARGS__);                \
+		CHECK(str(ss) == aprintf(__VA_ARGS__)); \
+	} while (0);
+
 TEST_CASE("printf guarantees")
 {
 	std::stringstream ss;
@@ -69,12 +76,6 @@ TEST_CASE("printf guarantees")
 TEST_CASE("printf")
 {
 	std::stringstream ss;
-	auto test = [&](auto... v)
-	{
-		auto s = aprintf(v...);
-		printf(ss, v...);
-		CHECK(str(ss) == s);
-	};
 
 	test("%%|%c|%s|%d|%i|%lu|%llx", '-', "", 42, 43, 44ul, 45ull);
 
@@ -765,12 +766,6 @@ TEST_CASE("printf")
 TEST_CASE("wprintf")
 {
 	std::wstringstream ss;
-	auto test = [&](auto... v)
-	{
-		auto s = aprintf(v...);
-		printf(ss, v...);
-		CHECK(str(ss) == s);
-	};
 
 	test(L"%12s", "str");
 	test(L"%12.4s", "A long time ago");
