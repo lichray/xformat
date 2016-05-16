@@ -179,7 +179,7 @@ private:
 
 	template <typename T>
 	void potentially_formattable(fmtshape sp, int w, int p, T const& v,
-	                             fmtflags fl = {})
+	                             fmtflags fl = {}, bool intp = false)
 	{
 		fl |= base_flags();
 		if (w != -1)
@@ -192,7 +192,7 @@ private:
 			fl |= os::showbase | os::showpoint;
 		if (has(sp, fmtoptions::left))
 			fl |= os::left;
-		else if (has(sp, fmtoptions::zero))
+		else if (has(sp, fmtoptions::zero) and not intp)
 		{
 			auto fc = state().fill(STDEX_G(charT, '0'));
 			state().flags(fl | os::internal | to_flags(sp));
@@ -234,37 +234,35 @@ private:
 	                            fmtflags fl = {})
 	    -> enable_if_t<std::is_integral<T>::value>
 	{
+		int d;
+		switch (sp.facade())
+		{
+		case 'd':
+		case 'i':
+		case 'u':
+			d = lexical_width<10>(v);
+			break;
+		case 'o':
+			d = lexical_width<8>(v) + has(sp, fmtoptions::alt);
+			break;
+		case 'x':
+		case 'X':
+			d = lexical_width<16>(v);
+			break;
+		default:
+			return potentially_formattable(sp, w, p, v, fl);
+		}
+
 		if (p == 0 and v == 0)
 			return print_string_ref(sp, w, p, view_type());
-		if (p <= 1)
-			return potentially_formattable(sp, w, p, v, fl);
-
-		int d = [=]
-		{
-			switch (sp.facade())
-			{
-			case 'd':
-			case 'i':
-			case 'u':
-				return lexical_width<10>(v);
-			case 'o':
-				return lexical_width<8>(v) +
-				       has(sp, fmtoptions::alt);
-			case 'x':
-			case 'X':
-				return lexical_width<16>(v);
-			default:
-				return p;
-			}
-		}();
-
 		if (p <= d)
-			return potentially_formattable(sp, w, p, v, fl);
+			return potentially_formattable(sp, w, p, v, fl,
+			                               p != -1);
 
 		std::basic_stringstream<charT, traits> dout;
 		state().copyfmt(dout);
 		ostream_formatter(dout)
-		    .potentially_formattable(sp, 0, p, v, fl);
+		    .potentially_formattable(sp, 0, p, v, fl, true);
 		auto s = dout.str();
 		s.insert(s.size() - size_t(d), size_t(p - d),
 		         STDEX_G(charT, '0'));
