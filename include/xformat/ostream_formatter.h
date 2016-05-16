@@ -26,12 +26,17 @@
 #pragma once
 
 #include <iosfwd>
+#include <sstream>
+#include <algorithm>
 #include <experimental/string_view>
+
+#include "gliteral.h"
 
 namespace stdex
 {
 
 using std::experimental::basic_string_view;
+using std::enable_if_t;
 
 template <typename charT, typename traits>
 struct ostream_outputter
@@ -81,7 +86,8 @@ struct ostream_formatter : ostream_outputter<charT, traits>
 	using outputter_type::state;
 
 	template <typename T>
-	void format(fmtshape shape, int width, int precision, T const& v)
+	auto format(fmtshape shape, int width, int precision, T const& v)
+	    -> enable_if_t<not std::is_arithmetic<T>::value>
 	{
 		print(shape, width, precision, v, superficial<T>());
 	}
@@ -107,6 +113,37 @@ struct ostream_formatter : ostream_outputter<charT, traits>
 			potentially_formattable(sp, w, p, v);
 	}
 
+	template <typename T>
+	auto format(fmtshape sp, int w, int p, T v)
+	    -> enable_if_t<std::is_signed<T>::value and
+	                   std::is_integral<T>::value>
+	{
+		switch (sp.facade())
+		{
+		case 'u':
+		case 'o':
+		case 'x':
+		case 'X':
+			return format(sp, w, p, std::make_unsigned_t<T>(v));
+		}
+
+		print_signed(sp, w, p, v);
+	}
+
+	template <typename T>
+	auto format(fmtshape sp, int w, int p, T v)
+	    -> enable_if_t<std::is_floating_point<T>::value>
+	{
+		print_signed(sp, w, p, v);
+	}
+
+	template <typename T>
+	auto format(fmtshape sp, int w, int p, T v)
+	    -> enable_if_t<std::is_unsigned<T>::value>
+	{
+		potentially_formattable(sp, w, p, v);
+	}
+
 private:
 	using os = typename outputter_type::ostream_type;
 	using fmtflags = typename os::fmtflags;
@@ -129,7 +166,7 @@ private:
 	}
 
 	template <typename T,
-	          typename = std::enable_if_t<
+	          typename = enable_if_t<
 	              not std::is_same<typename superficial<T>::type,
 	                               charT*>::value>>
 	void print(fmtshape sp, int w, int p, T s, superficial<char*>)
@@ -141,10 +178,10 @@ private:
 			                 std::string(s, size_t(p)).data());
 	}
 
-	template <typename T>
+	template <fmtflags additional = fmtflags(), typename T>
 	void potentially_formattable(fmtshape sp, int w, int p, T const& v)
 	{
-		auto fl = base_flags();
+		auto fl = base_flags() | additional;
 		if (w != -1)
 			state().width(w);
 		state().precision(p);
@@ -181,6 +218,24 @@ private:
 		if (w != -1)
 			state().width(w);
 		state() << v;
+	}
+
+	template <typename T>
+	void print_signed(fmtshape sp, int w, int p, T v)
+	{
+		if (has(sp, fmtoptions::sign) or
+		    not has(sp, fmtoptions::aligned_sign))
+			return potentially_formattable(sp, w, p, v);
+
+		std::basic_stringstream<charT, traits> dout;
+		state().copyfmt(dout);
+		ostream_formatter(dout)
+		    .potentially_formattable<os::showpos>(sp, w, p, v);
+		auto s = dout.str();
+		auto it = std::find(s.begin(), s.end(), STDEX_G(charT, '+'));
+		if (it != s.end())
+			*it = dout.fill();
+		state().write(s.data(), std::streamsize(s.size()));
 	}
 
 	fmtflags base_flags()
