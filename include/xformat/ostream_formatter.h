@@ -108,7 +108,7 @@ struct ostream_formatter : ostream_outputter<charT, traits>
 	void format(fmtshape sp, int w, int p, bool v)
 	{
 		if (sp.facade() == 's')
-			print_string_ref<os::boolalpha>(sp, w, p, v);
+			print_string_ref(sp, w, p, v, os::boolalpha);
 		else
 			potentially_formattable(sp, w, p, v);
 	}
@@ -141,12 +141,13 @@ struct ostream_formatter : ostream_outputter<charT, traits>
 	auto format(fmtshape sp, int w, int p, T v)
 	    -> enable_if_t<std::is_unsigned<T>::value>
 	{
-		potentially_formattable(sp, w, p, v);
+		print_basic_arithmetic(sp, w, p, v);
 	}
 
 private:
 	using os = typename outputter_type::ostream_type;
 	using fmtflags = typename os::fmtflags;
+	using view_type = basic_string_view<charT, traits>;
 
 	template <typename T>
 	void print(fmtshape sp, int w, int p, T const& v, ...)
@@ -160,9 +161,7 @@ private:
 		if (p == -1 or sp.facade() != 's')
 			print_string_ref(sp, w, p, s);
 		else
-			print_string_ref(
-			    sp, w, p,
-			    basic_string_view<charT, traits>(s, size_t(p)));
+			print_string_ref(sp, w, p, view_type(s, size_t(p)));
 	}
 
 	template <typename T,
@@ -178,10 +177,11 @@ private:
 			                 std::string(s, size_t(p)).data());
 	}
 
-	template <fmtflags additional = fmtflags(), typename T>
-	void potentially_formattable(fmtshape sp, int w, int p, T const& v)
+	template <typename T>
+	void potentially_formattable(fmtshape sp, int w, int p, T const& v,
+	                             fmtflags fl = {})
 	{
-		auto fl = base_flags() | additional;
+		fl |= base_flags();
 		if (w != -1)
 			state().width(w);
 		state().precision(p);
@@ -207,11 +207,12 @@ private:
 		state() << v;
 	}
 
-	template <fmtflags additional = fmtflags(), typename T>
+	template <typename T>
 	__attribute__((always_inline))
-	void print_string_ref(fmtshape sp, int w, int p, T const& v)
+	void print_string_ref(fmtshape sp, int w, int p, T const& v,
+	                      fmtflags fl = {})
 	{
-		auto fl = base_flags() | additional;
+		fl |= base_flags();
 		if (has(sp, fmtoptions::left))
 			fl |= os::left;
 		state().flags(fl);
@@ -221,16 +222,81 @@ private:
 	}
 
 	template <typename T>
-	void print_signed(fmtshape sp, int w, int p, T v)
+	auto print_basic_arithmetic(fmtshape sp, int w, int p, T v,
+	                            fmtflags fl = {})
+	    -> enable_if_t<std::is_floating_point<T>::value>
 	{
-		if (has(sp, fmtoptions::sign) or
-		    not has(sp, fmtoptions::aligned_sign))
-			return potentially_formattable(sp, w, p, v);
+		potentially_formattable(sp, w, p, v, fl);
+	}
+
+	template <typename T>
+	auto print_basic_arithmetic(fmtshape sp, int w, int p, T v,
+	                            fmtflags fl = {})
+	    -> enable_if_t<std::is_integral<T>::value>
+	{
+		if (p == 0 and v == 0)
+			return print_string_ref(sp, w, p, view_type());
+		if (p <= 1)
+			return potentially_formattable(sp, w, p, v, fl);
+
+		int d = [=]
+		{
+			switch (sp.facade())
+			{
+			case 'd':
+			case 'i':
+			case 'u':
+				return lexical_width<10>(v);
+			case 'o':
+				return lexical_width<8>(v) +
+				       has(sp, fmtoptions::alt);
+			case 'x':
+			case 'X':
+				return lexical_width<16>(v);
+			default:
+				return p;
+			}
+		}();
+
+		if (p <= d)
+			return potentially_formattable(sp, w, p, v, fl);
 
 		std::basic_stringstream<charT, traits> dout;
 		state().copyfmt(dout);
 		ostream_formatter(dout)
-		    .potentially_formattable<os::showpos>(sp, w, p, v);
+		    .potentially_formattable(sp, 0, p, v, fl);
+		auto s = dout.str();
+		s.insert(s.size() - size_t(d), size_t(p - d),
+		         STDEX_G(charT, '0'));
+		print_string_ref(sp, w, p, s);
+	}
+
+	template <int Base, typename Int>
+	static int lexical_width(Int i)
+	{
+		if (i == 0)
+			return 1;
+
+		int n = 0;
+		while (i != 0)
+		{
+			i /= Base;
+			++n;
+		}
+		return n;
+	}
+
+	template <typename T>
+	void print_signed(fmtshape sp, int w, int p, T v)
+	{
+		if (has(sp, fmtoptions::sign) or
+		    not has(sp, fmtoptions::aligned_sign))
+			return print_basic_arithmetic(sp, w, p, v);
+
+		std::basic_stringstream<charT, traits> dout;
+		state().copyfmt(dout);
+		ostream_formatter(dout)
+		    .print_basic_arithmetic(sp, w, p, v, os::showpos);
 		auto s = dout.str();
 		auto it = std::find(s.begin(), s.end(), STDEX_G(charT, '+'));
 		if (it != s.end())
