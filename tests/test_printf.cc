@@ -96,4 +96,32 @@ TEST_CASE("printf extras")
 
 	printf(ss, "%- 7d", true);
 	REQUIRE(str(ss) == "1      ");
+
+	WHEN("C locale is set to use a different decimal point")
+	{
+		auto p = []
+		{
+			if (auto p = setlocale(LC_ALL, "de_DE"))
+				return p;
+			else
+				return setlocale(LC_ALL, "de_DE.UTF-8");
+		}();
+		if (p == nullptr)
+			WARN("Cannot set locale to de_DE");
+
+		THEN("C++ xformat does not follow it")
+		{
+			if (p)
+			{
+				auto s = aprintf("%#6a", 3.0);
+				REQUIRE(s == "0x1,8p+1");
+
+				printf(ss, "%#6a", 3.0);
+				REQUIRE(str(ss) == "0x1.8p+1");
+			}
+		}
+
+		if (p)
+			setlocale(LC_ALL, "C");
+	}
 }

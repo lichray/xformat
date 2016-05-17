@@ -30,6 +30,12 @@
 #include <algorithm>
 #include <experimental/string_view>
 
+#include <locale>
+#include <new>
+#include <iterator>
+#include <stdio.h>
+#include <locale.h>
+
 #include "gliteral.h"
 
 namespace stdex
@@ -134,6 +140,13 @@ struct ostream_formatter : ostream_outputter<charT, traits>
 	auto format(fmtshape sp, int w, int p, T v)
 	    -> enable_if_t<std::is_floating_point<T>::value>
 	{
+		switch (sp.facade())
+		{
+		case 'a':
+		case 'A':
+			return print_hexfloat(sp, w, p, v);
+		}
+
 		print_signed(sp, w, p, v);
 	}
 
@@ -300,8 +313,7 @@ private:
 	template <typename T>
 	void print_signed(fmtshape sp, int w, int p, T v)
 	{
-		if (has(sp, fmtoptions::sign) or
-		    not has(sp, fmtoptions::aligned_sign))
+		if (not wants_aligned_sign(sp))
 			return print_basic_arithmetic(sp, w, p, v);
 
 		std::basic_stringstream<charT, traits> dout;
@@ -312,6 +324,87 @@ private:
 		auto it = std::find(s.begin(), s.end(), STDEX_G(charT, '+'));
 		*it = dout.fill();
 		state().write(s.data(), std::streamsize(s.size()));
+	}
+
+	template <typename T>
+	void print_hexfloat(fmtshape sp, int w, int p, T v)
+	{
+		char buf[128];
+		int n = [=, &buf]
+		{
+			std::string fmt;
+			fmt.push_back('%');
+
+			if (has(sp,
+			        fmtoptions::sign | fmtoptions::aligned_sign))
+				fmt.push_back('+');
+			if (has(sp, fmtoptions::alt))
+				fmt.push_back('#');
+
+			if (std::is_same<T, long double>())
+				fmt.push_back('L');
+
+			if (p == -1)
+			{
+				fmt.push_back(sp.facade());
+				return ::snprintf(buf, sizeof(buf), fmt.data(),
+				                  v);
+			}
+			else
+			{
+				fmt.append(".*");
+				fmt.push_back(sp.facade());
+				return ::snprintf(buf, sizeof(buf), fmt.data(),
+				                  p, v);
+			}
+		}();
+
+		if (!(0 <= n and n < int(sizeof(buf))))
+			throw std::bad_alloc();
+
+		auto&& punct =
+		    std::use_facet<std::numpunct<charT>>(state().getloc());
+		auto&& ctype =
+		    std::use_facet<std::ctype<charT>>(state().getloc());
+
+		auto dp =
+		    std::find(buf, buf + n, *::localeconv()->decimal_point);
+
+		if (has(sp, fmtoptions::zero))
+		{
+			std::basic_string<charT, traits> s;
+			auto m = std::max(w, n);
+			s.reserve(size_t(m));
+			auto off = buf[0] == '+';
+			if (off)
+				s.push_back(wants_aligned_sign(sp)
+				                ? state().fill()
+				                : STDEX_G(charT, '+'));
+			s.append(size_t(m - n), STDEX_G(charT, '0'));
+			auto wp = s.end();
+			s.resize(size_t(m));
+			ctype.widen(buf + off, buf + n, &*wp);
+			if (dp != buf + n)
+				*(wp + std::distance(buf, dp) - off) =
+				    punct.decimal_point();
+			print_string_ref(sp, 0, s);
+		}
+		else
+		{
+			charT wp[sizeof(buf)];
+			ctype.widen(buf, buf + n, wp);
+			if (wants_aligned_sign(sp))
+				wp[0] = state().fill();
+			if (dp != buf + n)
+				*(wp + std::distance(buf, dp)) =
+				    punct.decimal_point();
+			print_string_ref(sp, w, view_type(wp, size_t(n)));
+		}
+	}
+
+	void print_hexfloat(fmtshape sp, int w, int p, float v)
+	{
+		print_hexfloat(sp, w, p, double(v));
 	}
 
 	fmtflags base_flags()
@@ -353,7 +446,13 @@ private:
 		}
 	}
 
-	constexpr static auto has(fmtshape sp, fmtoptions opt)
+	constexpr static bool wants_aligned_sign(fmtshape sp)
+	{
+		return has(sp, fmtoptions::aligned_sign) and
+		       not has(sp, fmtoptions::sign);
+	}
+
+	constexpr static bool has(fmtshape sp, fmtoptions opt)
 	{
 		return (sp.options() & opt) != fmtoptions::none;
 	}
