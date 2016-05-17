@@ -1,5 +1,7 @@
 #include <xformat/ioformat.h>
 
+#include <cmath>
+
 #include "catch.hpp"
 #include "streamtest.h"
 
@@ -784,4 +786,106 @@ TEST_CASE("printf floating point")
 	test("% -06.12A", 3.14);
 	test("% #06.12A", 3.14);
 	test("% #0+6.12A", 3.14);
+
+	test("%6g", INFINITY);
+	test("%-6g", INFINITY);
+	test("%+6g", INFINITY);
+	test("%06g", INFINITY);
+	test("%#6g", INFINITY);
+	test("%-06g", INFINITY);
+	test("%#06g", INFINITY);
+	test("%#0+6g", INFINITY);
+	test("% 6g", INFINITY);
+	test("% -6g", INFINITY);
+	test("% +6g", INFINITY);
+	test("% 06g", INFINITY);
+	test("% #6g", INFINITY);
+	test("% -06g", INFINITY);
+	test("% #06g", INFINITY);
+	test("% #0+6g", INFINITY);
+
+	test("%6.12g", NAN);
+	test("%-6.12g", NAN);
+	test("%+6.12g", NAN);
+	test("%06.12g", NAN);
+	test("%#6.12g", NAN);
+	test("%-06.12g", NAN);
+	test("%#06.12g", NAN);
+	test("%#0+6.12g", NAN);
+	test("% 6.12g", NAN);
+	test("% -6.12g", NAN);
+	test("% +6.12g", NAN);
+	test("% 06.12g", NAN);
+	test("% #6.12g", NAN);
+	test("% -06.12g", NAN);
+	test("% #06.12g", NAN);
+	test("% #0+6.12g", NAN);
+
+	test("%6.12G", NAN);
+	test("%-6.12G", NAN);
+	test("%+6.12G", NAN);
+	test("%06.12G", NAN);
+	test("%#6.12G", NAN);
+	test("%-06.12G", NAN);
+	test("%#06.12G", NAN);
+	test("%#0+6.12G", NAN);
+	test("% 6.12G", NAN);
+	test("% -6.12G", NAN);
+	test("% +6.12G", NAN);
+	test("% 06.12G", NAN);
+	test("% #6.12G", NAN);
+	test("% -06.12G", NAN);
+	test("% #06.12G", NAN);
+	test("% #0+6.12G", NAN);
+
+	test("%6a", INFINITY);
+	test("%-6a", INFINITY);
+	test("%+6a", INFINITY);
+	test("%06a", INFINITY);
+	test("%#6a", INFINITY);
+	test("%-06a", INFINITY);
+	test("%#06a", INFINITY);
+	test("%#0+6a", INFINITY);
+	test("% 6a", INFINITY);
+	test("% -6a", INFINITY);
+	test("% +6a", INFINITY);
+	test("% 06a", INFINITY);
+	test("% #6a", INFINITY);
+	test("% -06a", INFINITY);
+	test("% #06a", INFINITY);
+	test("% #0+6a", INFINITY);
+
+	test("%6.12a", NAN);
+	test("%-6.12a", NAN);
+	test("%+6.12a", NAN);
+	test("%06.12a", NAN);
+	test("%#6.12a", NAN);
+	test("%-06.12a", NAN);
+	test("%#06.12a", NAN);
+	test("%#0+6.12a", NAN);
+	test("% 6.12a", NAN);
+	test("% -6.12a", NAN);
+	test("% +6.12a", NAN);
+	test("% 06.12a", NAN);
+	test("% #6.12a", NAN);
+	test("% -06.12a", NAN);
+	test("% #06.12a", NAN);
+	test("% #0+6.12a", NAN);
+
+	test("%6.12A", NAN);
+	test("%-6.12A", NAN);
+	test("%+6.12A", NAN);
+	test("%06.12A", NAN);
+	test("%#6.12A", NAN);
+	test("%-06.12A", NAN);
+	test("%#06.12A", NAN);
+	test("%#0+6.12A", NAN);
+	test("% 6.12A", NAN);
+	test("% -6.12A", NAN);
+	test("% +6.12A", NAN);
+	test("% 06.12A", NAN);
+	test("% #6.12A", NAN);
+	test("% -06.12A", NAN);
+	test("% #06.12A", NAN);
+	test("% #0+6.12A", NAN);
 }

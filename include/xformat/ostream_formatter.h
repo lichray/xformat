@@ -27,6 +27,7 @@
 
 #include <iosfwd>
 #include <sstream>
+#include <cmath>
 #include <algorithm>
 #include <experimental/string_view>
 
@@ -206,7 +207,8 @@ private:
 			fl |= os::showbase | os::showpoint;
 		if (has(sp, fmtoptions::left))
 			fl |= os::left;
-		else if (has(sp, fmtoptions::zero) and not intp)
+		else if (has(sp, fmtoptions::zero) and not intp and
+		         not_infinity_or_NaN(v))
 		{
 			auto fc = state().fill(STDEX_G(charT, '0'));
 			state().flags(fl | os::internal | to_flags(sp));
@@ -219,6 +221,24 @@ private:
 
 		state().flags(fl | to_flags(sp));
 		state() << v;
+	}
+
+	template <typename T>
+	static bool not_infinity_or_NaN(T const& v)
+	{
+		return not_infinity_or_NaN(v, std::is_floating_point<T>());
+	}
+
+	template <typename T>
+	static bool not_infinity_or_NaN(T const& v, std::true_type)
+	{
+		return std::isfinite(v);
+	}
+
+	template <typename T>
+	static bool not_infinity_or_NaN(T const& v, std::false_type)
+	{
+		return true;
 	}
 
 	template <typename T>
@@ -360,7 +380,7 @@ private:
 			}
 		}();
 
-		if (!(0 <= n and n < int(sizeof(buf))))
+		if (!(0 < n and n < int(sizeof(buf))))
 			throw std::bad_alloc();
 
 		auto&& punct =
@@ -368,15 +388,15 @@ private:
 		auto&& ctype =
 		    std::use_facet<std::ctype<charT>>(state().getloc());
 
+		auto off = buf[0] == '+';
 		auto dp =
 		    std::find(buf, buf + n, *::localeconv()->decimal_point);
 
-		if (has(sp, fmtoptions::zero))
+		if (has(sp, fmtoptions::zero) and not_infinity_or_NaN(v))
 		{
 			std::basic_string<charT, traits> s;
 			auto m = std::max(w, n);
 			s.reserve(size_t(m));
-			auto off = buf[0] == '+';
 			if (off)
 				s.push_back(wants_aligned_sign(sp)
 				                ? state().fill()
@@ -394,7 +414,7 @@ private:
 		{
 			charT wp[sizeof(buf)];
 			ctype.widen(buf, buf + n, wp);
-			if (wants_aligned_sign(sp))
+			if (wants_aligned_sign(sp) and off)
 				wp[0] = state().fill();
 			if (dp != buf + n)
 				*(wp + std::distance(buf, dp)) =
