@@ -353,31 +353,26 @@ private:
 		char buf[128];
 		int n = [=, &buf]
 		{
-			std::string fmt;
-			fmt.push_back('%');
-
+			char fmt[8] = { '%' };
+			auto bp = fmt;
 			if (has(sp,
 			        fmtoptions::sign | fmtoptions::aligned_sign))
-				fmt.push_back('+');
+				*++bp = '+';
 			if (has(sp, fmtoptions::alt))
-				fmt.push_back('#');
-
+				*++bp = '#';
+			if (p != -1)
+			{
+				*++bp = '.';
+				*++bp = '*';
+			}
 			if (std::is_same<T, long double>())
-				fmt.push_back('L');
+				*++bp = 'L';
+			*++bp = sp.facade();
 
 			if (p == -1)
-			{
-				fmt.push_back(sp.facade());
-				return ::snprintf(buf, sizeof(buf), fmt.data(),
-				                  v);
-			}
+				return ::snprintf(buf, sizeof(buf), fmt, v);
 			else
-			{
-				fmt.append(".*");
-				fmt.push_back(sp.facade());
-				return ::snprintf(buf, sizeof(buf), fmt.data(),
-				                  p, v);
-			}
+				return ::snprintf(buf, sizeof(buf), fmt, p, v);
 		}();
 
 		if (!(0 < n and n < int(sizeof(buf))))
@@ -392,18 +387,18 @@ private:
 		auto dp =
 		    std::find(buf, buf + n, *::localeconv()->decimal_point);
 
-		if (has(sp, fmtoptions::zero) and not_infinity_or_NaN(v))
+		if (has(sp, fmtoptions::zero) and w > n and
+		    not_infinity_or_NaN(v))
 		{
 			std::basic_string<charT, traits> s;
-			auto m = std::max(w, n);
-			s.reserve(size_t(m));
+			s.reserve(size_t(w));
 			if (off)
 				s.push_back(wants_aligned_sign(sp)
 				                ? state().fill()
 				                : STDEX_G(charT, '+'));
-			s.append(size_t(m - n), STDEX_G(charT, '0'));
+			s.append(size_t(w - n), STDEX_G(charT, '0'));
 			auto wp = s.end();
-			s.resize(size_t(m));
+			s.resize(size_t(w));
 			ctype.widen(buf + off, buf + n, &*wp);
 			if (dp != buf + n)
 				*(wp + std::distance(buf, dp) - off) =
