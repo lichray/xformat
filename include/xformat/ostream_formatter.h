@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <locale.h>
 
+#include "format.h"
 #include "gliteral.h"
 
 namespace stdex
@@ -44,7 +45,7 @@ namespace stdex
 using std::experimental::basic_string_view;
 using std::enable_if_t;
 
-template <typename charT, typename traits>
+template <typename charT, typename traits = std::char_traits<charT>>
 struct ostream_outputter
 {
 	using ostream_type = std::basic_ostream<charT, traits>;
@@ -84,7 +85,7 @@ struct superficial<T const*> : superficial<T*>
 	using type = T*;
 };
 
-template <typename charT, typename traits>
+template <typename charT, typename traits = std::char_traits<charT>>
 struct ostream_formatter : ostream_outputter<charT, traits>
 {
 	using outputter_type = ostream_outputter<charT, traits>;
@@ -458,4 +459,24 @@ private:
 	}
 };
 
+#ifndef XFORMAT_HEADER_ONLY
+
+extern template void
+ostream_formatter<char>::print_hexfloat(fmtshape, int, int, double);
+extern template void
+ostream_formatter<char>::print_hexfloat(fmtshape, int, int, long double);
+extern template void
+ostream_formatter<wchar_t>::print_hexfloat(fmtshape, int, int, double);
+extern template void
+ostream_formatter<wchar_t>::print_hexfloat(fmtshape, int, int, long double);
+extern template void
+ostream_formatter<char16_t>::print_hexfloat(fmtshape, int, int, double);
+extern template void
+ostream_formatter<char16_t>::print_hexfloat(fmtshape, int, int, long double);
+extern template void
+ostream_formatter<char32_t>::print_hexfloat(fmtshape, int, int, double);
+extern template void
+ostream_formatter<char32_t>::print_hexfloat(fmtshape, int, int, long double);
+
+#endif
 }
