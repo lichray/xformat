@@ -95,20 +95,20 @@ struct ostream_formatter : ostream_outputter<charT, traits>
 	void format(fmtshape sp, int w, int p,
 	            basic_string_view<charT, traits> sv)
 	{
-		print_string_ref(sp, w, p, sv);
+		print_string_ref(sp, w, sv);
 	}
 
 	template <typename Allocator>
 	void format(fmtshape sp, int w, int p,
 	            std::basic_string<charT, traits, Allocator> const& s)
 	{
-		print_string_ref(sp, w, p, s);
+		print_string_ref(sp, w, s);
 	}
 
 	void format(fmtshape sp, int w, int p, bool v)
 	{
 		if (sp.facade() == 's')
-			print_string_ref(sp, w, p, v, os::boolalpha);
+			print_string_ref(sp, w, v, os::boolalpha);
 		else
 			potentially_formattable(sp, w, p, v);
 	}
@@ -159,9 +159,9 @@ private:
 	void print(fmtshape sp, int w, int p, T s, superficial<charT*>)
 	{
 		if (p == -1 or sp.facade() != 's')
-			print_string_ref(sp, w, p, s);
+			print_string_ref(sp, w, s);
 		else
-			print_string_ref(sp, w, p, view_type(s, size_t(p)));
+			print_string_ref(sp, w, view_type(s, size_t(p)));
 	}
 
 	template <typename T,
@@ -171,9 +171,9 @@ private:
 	void print(fmtshape sp, int w, int p, T s, superficial<char*>)
 	{
 		if (p == -1 or sp.facade() != 's')
-			print_string_ref(sp, w, p, s);
+			print_string_ref(sp, w, s);
 		else
-			print_string_ref(sp, w, p,
+			print_string_ref(sp, w,
 			                 std::string(s, size_t(p)).data());
 	}
 
@@ -209,8 +209,7 @@ private:
 
 	template <typename T>
 	__attribute__((always_inline))
-	void print_string_ref(fmtshape sp, int w, int p, T const& v,
-	                      fmtflags fl = {})
+	void print_string_ref(fmtshape sp, int w, T const& v, fmtflags fl = {})
 	{
 		fl |= base_flags();
 		if (has(sp, fmtoptions::left))
@@ -264,9 +263,9 @@ private:
 		if (p == 0 and v == 0)
 		{
 			if (sign)
-				return print_string_ref(sp, w, p, sign);
+				return print_string_ref(sp, w, sign);
 			else
-				return print_string_ref(sp, w, p, view_type());
+				return print_string_ref(sp, w, view_type());
 		}
 
 		if (p <= d)
@@ -280,7 +279,7 @@ private:
 		auto s = dout.str();
 		s.insert(s.size() - size_t(d), size_t(p - d),
 		         STDEX_G(charT, '0'));
-		print_string_ref(sp, w, p, s);
+		print_string_ref(sp, w, s);
 	}
 
 	template <int Base, typename Int>
