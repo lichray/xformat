@@ -10,32 +10,31 @@ TEST_CASE("printf guarantees")
 	std::stringstream ss;
 
 	ss.width(12);
-	ss.fill('_');
 	printf(ss, "mixing|%#+8.3ff", 0.12);
 
-	REQUIRE(str(ss) == "mixing|__+0.120f");
+	REQUIRE(str(ss) == "mixing|  +0.120f");
 	REQUIRE(ss.width() == 12);
 	REQUIRE(ss.precision() == 6);
 
-	printf(ss, "%3$0+*2$d|%4$-*2$.*1$E", 3, 10, 42, 0.12);
-
-	REQUIRE(str(ss) == "+000000042|1.200E-01_");
-	REQUIRE(ss.width() == 12);
-	REQUIRE(ss.precision() == 6);
-
-	ss.fill(' ');
-	printf(ss, "%0*u|%-*.*E", 8, 42, 10, 3, 0.12);
-	auto s = aprintf("%0*u|%-*.*E", 8, 42, 10, 3, 0.12);
+	printf(ss, "%0*u|%-*.*g", 8, 42, 10, 3, 0.12);
+	auto s = aprintf("%0*u|%-*.*g", 8, 42, 10, 3, 0.12);
 
 	REQUIRE(ss.str() == s);
-	REQUIRE(str(ss) == "00000042|1.200E-01 ");
+	REQUIRE(str(ss) == "00000042|0.12      ");
+
+	ss.fill('_');
+	printf(ss, "%3$0+*2$d|%4$-*2$.*1$g", 3, 10, 42, 0.12);
+
+	REQUIRE(str(ss) == "+000000042|0.12______");
+	REQUIRE(ss.width() == 12);
+	REQUIRE(ss.precision() == 6);
 
 	std::string st = "test";
 	printf(ss, "%-7.s", st);
 	s = str(ss);
 	printf(ss, "%-7.s", std::experimental::string_view(st));
 
-	REQUIRE(s == "test   ");
+	REQUIRE(s == "test___");
 	REQUIRE(str(ss) == s);
 }
 
@@ -54,8 +53,12 @@ TEST_CASE("printf")
 	auto p = s;
 	test("%12.4s", p);
 
-	test("%p", &ss);
-	test("%12p", &ss);
+	printf(ss, "%60p", &ss);
+	REQUIRE(ss.str().size() == 60);
+
+	void* addr;
+	ss >> addr;
+	CHECK(addr == &ss);
 }
 
 TEST_CASE("wprintf")
