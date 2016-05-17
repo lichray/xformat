@@ -86,6 +86,9 @@ struct superficial<T const*> : superficial<T*>
 	using type = T*;
 };
 
+template <typename T>
+using superficial_t = typename superficial<T>::type;
+
 template <typename charT, typename traits = std::char_traits<charT>>
 struct ostream_formatter : ostream_outputter<charT, traits>
 {
@@ -95,7 +98,6 @@ struct ostream_formatter : ostream_outputter<charT, traits>
 
 	template <typename T>
 	auto format(fmtshape shape, int width, int precision, T const& v)
-	    -> enable_if_t<not std::is_arithmetic<T>::value>
 	{
 		print(shape, width, precision, v, superficial<T>());
 	}
@@ -113,6 +115,20 @@ struct ostream_formatter : ostream_outputter<charT, traits>
 		print_string_ref(sp, w, s);
 	}
 
+	void format(fmtshape sp, int w, int p, charT c)
+	{
+		switch (sp.facade())
+		{
+		case 'c':
+			return print_string_ref(sp, w, c);
+		case 'i':
+			return potentially_formattable(sp, w, p,
+			                               traits::to_int_type(c));
+		}
+
+		potentially_formattable(sp, w, p, c);
+	}
+
 	void format(fmtshape sp, int w, int p, bool v)
 	{
 		if (sp.facade() == 's')
@@ -121,8 +137,19 @@ struct ostream_formatter : ostream_outputter<charT, traits>
 			potentially_formattable(sp, w, p, v);
 	}
 
+private:
+	using os = typename outputter_type::ostream_type;
+	using fmtflags = typename os::fmtflags;
+	using view_type = basic_string_view<charT, traits>;
+
 	template <typename T>
-	auto format(fmtshape sp, int w, int p, T v)
+	void print(fmtshape sp, int w, int p, T const& v, ...)
+	{
+		potentially_formattable(sp, w, p, v);
+	}
+
+	template <typename T>
+	auto print(fmtshape sp, int w, int p, T v, superficial<T>)
 	    -> enable_if_t<std::is_signed<T>::value and
 	                   std::is_integral<T>::value>
 	{
@@ -139,7 +166,14 @@ struct ostream_formatter : ostream_outputter<charT, traits>
 	}
 
 	template <typename T>
-	auto format(fmtshape sp, int w, int p, T v)
+	auto print(fmtshape sp, int w, int p, T v, superficial<T>)
+	    -> enable_if_t<std::is_unsigned<T>::value>
+	{
+		print_basic_arithmetic(sp, w, p, v);
+	}
+
+	template <typename T>
+	auto print(fmtshape sp, int w, int p, T v, superficial<T>)
 	    -> enable_if_t<std::is_floating_point<T>::value>
 	{
 		switch (sp.facade())
@@ -152,22 +186,17 @@ struct ostream_formatter : ostream_outputter<charT, traits>
 		print_signed(sp, w, p, v);
 	}
 
-	template <typename T>
-	auto format(fmtshape sp, int w, int p, T v)
-	    -> enable_if_t<std::is_unsigned<T>::value>
+	void print(fmtshape sp, int w, int p, char c, superficial<char>)
 	{
-		print_basic_arithmetic(sp, w, p, v);
-	}
+		switch (sp.facade())
+		{
+		case 'c':
+			return print_string_ref(sp, w, c);
+		case 'i':
+			return potentially_formattable(sp, w, p, int(c));
+		}
 
-private:
-	using os = typename outputter_type::ostream_type;
-	using fmtflags = typename os::fmtflags;
-	using view_type = basic_string_view<charT, traits>;
-
-	template <typename T>
-	void print(fmtshape sp, int w, int p, T const& v, ...)
-	{
-		potentially_formattable(sp, w, p, v);
+		potentially_formattable(sp, w, p, c);
 	}
 
 	template <typename T>
@@ -179,11 +208,9 @@ private:
 			print_string_ref(sp, w, view_type(s, size_t(p)));
 	}
 
-	template <typename T,
-	          typename = enable_if_t<
-	              not std::is_same<typename superficial<T>::type,
-	                               charT*>::value>>
-	void print(fmtshape sp, int w, int p, T s, superficial<char*>)
+	template <typename T>
+	auto print(fmtshape sp, int w, int p, T s, superficial<char*>)
+	    -> enable_if_t<not std::is_same<superficial_t<T>, charT*>::value>
 	{
 		if (p == -1 or sp.facade() != 's')
 			print_string_ref(sp, w, s);

@@ -76,6 +76,18 @@ TEST_CASE("wprintf")
 	wchar_t ws[] = L" who could travel much faster than light.";
 	auto wp = ws;
 	test(L"%12.4ls", wp);
+
+	printf(ss, L"%+#07c", L'a');
+	REQUIRE(str(ss) == L"      a");
+
+	printf(ss, L"%+#07c", 'a');
+	REQUIRE(str(ss) == L"      a");
+
+	printf(ss, L"%#07i", L'a');
+	REQUIRE(str(ss) == aprintf(L"%07u", L'a'));
+
+	printf(ss, L"%+#07i", 'a');
+	REQUIRE(str(ss) == aprintf(L"%+07d", 'a'));
 }
 
 TEST_CASE("printf extras")
@@ -99,6 +111,18 @@ TEST_CASE("printf extras")
 
 	printf(ss, "%- 7d", true);
 	REQUIRE(str(ss) == "1      ");
+
+	printf(ss, "%+#07s", true);
+	REQUIRE(str(ss) == "   true");
+
+	printf(ss, "%+#07d", true);
+	REQUIRE(str(ss) == aprintf("%+07d", true));
+
+	printf(ss, "%+#07c", 'a');
+	REQUIRE(str(ss) == "      a");
+
+	printf(ss, "%+#07i", 'a');
+	REQUIRE(str(ss) == aprintf("%+07d", 'a'));
 
 	WHEN("C locale is set to use a different decimal point")
 	{
