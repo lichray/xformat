@@ -68,7 +68,7 @@ typename overloaded<Fs...>::type overload(Fs... x)
 }
 }
 
-#if defined(__has_extension) && __has_extension(c_generic_selections)
+#if defined(__clang__)
 
 #define STDEX_G(t, literal)            \
 	_Generic(t{},                  \
