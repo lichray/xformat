@@ -292,9 +292,9 @@ struct bounded_reader
 		return ++p < eptr() and *p == c;
 	}
 
-	constexpr auto find(charT c) const
+	constexpr void seek_to(charT c)
 	{
-		return findc(cur_, end_, c);
+		cur_ = findc(cur_, end_, c);
 	}
 
 	constexpr auto operator*() const
@@ -305,11 +305,6 @@ struct bounded_reader
 	constexpr auto ptr() const
 	{
 		return cur_;
-	}
-
-	constexpr void ptr(pointer p)
-	{
-		cur_ = p;
 	}
 
 	constexpr auto eptr() const
@@ -436,35 +431,37 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 
 	while (r)
 	{
-		auto np = r.find(STDEX_G(charT, '%'));
+		auto p = r.ptr();
+		r.seek_to(STDEX_G(charT, '%'));
 
 		// process escaping first
-		if (np != r.eptr())
+		if (r)
 		{
-			if (np + 1 == r.eptr())
+			if (r.ptr() + 1 == r.eptr())
 				throw invalid_argument{ "single '%'" };
 
-			if (np[1] == STDEX_G(charT, '%'))
+			if (r.look_ahead(STDEX_G(charT, '%')))
 			{
-				if (np++ == r.ptr())
-					fstk.push(instruction(*np));
+				bool single = p == r.ptr();
+				r.incr();
+				if (single)
+					fstk.push(instruction(*r));
 				else
-					fstk.push(instruction(s, r.ptr(), np));
+					fstk.push(instruction(s, p, r.ptr()));
 
-				r.ptr(np + 1);
+				r.incr();
 				continue;
 			}
 		}
 
-		if (auto d = np - r.ptr())
+		if (auto d = r.ptr() - p)
 		{
 			if (d == 1)
-				fstk.push(instruction(*r));
+				fstk.push(instruction(*p));
 			else
-				fstk.push(instruction(s, r.ptr(), np));
+				fstk.push(instruction(s, p, r.ptr()));
 		}
 
-		r.ptr(np);
 		if (r.empty())
 			break;
 
