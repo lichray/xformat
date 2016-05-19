@@ -32,10 +32,10 @@ namespace stdex
 
 template <typename R, int Low, int High, int Mid = (Low + High) / 2,
           typename = void>
-struct _visit1_at;
+struct _visit_at;
 
 template <typename R, int Low, int High, int Mid>
-struct _visit1_at<R, Low, High, Mid, std::enable_if_t<(Low > High)>>
+struct _visit_at<R, Low, High, Mid, std::enable_if_t<(Low > High)>>
 {
 	template <typename... T>
 	[[noreturn]] static R apply(int, T&&...)
@@ -45,44 +45,44 @@ struct _visit1_at<R, Low, High, Mid, std::enable_if_t<(Low > High)>>
 };
 
 template <typename R, int Mid>
-struct _visit1_at<R, Mid, Mid, Mid>
+struct _visit_at<R, Mid, Mid, Mid>
 {
 	template <typename Tuple, typename F>
 	static decltype(auto) apply(int n, F&& f, Tuple&& tp)
 	{
 		return std::forward<F>(f)(
-		    std::get<Mid - 1>(std::forward<Tuple>(tp)));
+		    std::get<Mid>(std::forward<Tuple>(tp)));
 	}
 };
 
 template <typename R, int Low, int High, int Mid>
-struct _visit1_at<R, Low, High, Mid, std::enable_if_t<(Low < High)>>
+struct _visit_at<R, Low, High, Mid, std::enable_if_t<(Low < High)>>
 {
 	template <typename... T>
 	static decltype(auto) apply(int n, T&&... t)
 	{
 		if (n < Mid)
-			return _visit1_at<R, Low, Mid - 1>::apply(
+			return _visit_at<R, Low, Mid - 1>::apply(
 			    n, std::forward<T>(t)...);
 		else if (n == Mid)
-			return _visit1_at<R, Mid, Mid>::apply(
+			return _visit_at<R, Mid, Mid>::apply(
 			    n, std::forward<T>(t)...);
 		else
-			return _visit1_at<R, Mid + 1, High>::apply(
+			return _visit_at<R, Mid + 1, High>::apply(
 			    n, std::forward<T>(t)...);
 	}
 };
 
 template <typename R = void, typename Tuple, typename F>
 inline
-decltype(auto) visit1_at(int n, F&& f, Tuple&& tp)
+decltype(auto) visit_at(int n, F&& f, Tuple&& tp)
 {
 	constexpr int m = std::tuple_size<std::decay_t<Tuple>>::value;
-	if (n < 1 or n > m)
+	if (!(0 <= n and n < m))
 		throw std::out_of_range{ "no such element" };
 
-	return _visit1_at<R, 1, m>::apply(n, std::forward<F>(f),
-	                                  std::forward<Tuple>(tp));
+	return _visit_at<R, 0, m - 1>::apply(n, std::forward<F>(f),
+	                                     std::forward<Tuple>(tp));
 }
 
 template <typename T, typename = void>

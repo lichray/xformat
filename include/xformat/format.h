@@ -358,7 +358,7 @@ int parse_position(bounded_reader<charT>& r)
 	int n = to_int(r.read());
 	if (n < 1 or n > 9 or r.empty() or r.read() != STDEX_G(charT, '$'))
 		throw std::invalid_argument{ "index is not 1-9$" };
-	return n;
+	return n - 1;
 }
 
 template <typename charT>
@@ -426,8 +426,8 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 
 	fmtstack<charT> fstk { s };
 	bounded_reader<charT> r(s, sz);
-	int ac = 0;
-	bool sequential{};  // expects: ac > 0
+	int ac = -1;
+	bool sequential{};  // expects: ac != -1
 
 	while (r)
 	{
@@ -468,7 +468,7 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 		r.incr();
 
 		// assert: !r.empty()
-		if (ac == 0)
+		if (ac == -1)
 			sequential = !(is_1to9(*r) and
 			               r.look_ahead(STDEX_G(charT, '$')));
 
@@ -617,15 +617,15 @@ decltype(auto) vformat(Formatter fter, fmtstack<charT> const& fstk, Tuple tp)
 			fter.send(fstk.raw_char(et));
 			break;
 		case OP_FMT:
-			visit1_at(
+			visit_at(
 			    et.arg,
 			    [
 			      shape = et.shape,
 			      w = et.has(REG_ARG1)
-				      ? visit1_at<int>(et.arg1, int_cast(), tp)
+				      ? visit_at<int>(et.arg1, int_cast(), tp)
 				      : et.arg1,
 			      p = et.has(REG_ARG2)
-				      ? visit1_at<int>(et.arg2, int_cast(), tp)
+				      ? visit_at<int>(et.arg2, int_cast(), tp)
 				      : et.arg2,
 			      &fter
 			    ](auto&& x)
