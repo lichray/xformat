@@ -1,0 +1,17 @@
+sudo: required
+dist: trusty
+language: cpp
+addons:
+  apt:
+    packages:
+      - g++-5
+    sources:
+      - ubuntu-toolchain-r-test
+matrix:
+  include:
+    - compiler: clang
+      script:
+        - cmake . && make -j4 && ./tests/run
+    - compiler: gcc
+      script:
+        - cmake -DCMAKE_CXX_COMPILER=g++-5 . && make -j4 && ./tests/run
