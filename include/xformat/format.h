@@ -357,7 +357,7 @@ int parse_position(bounded_reader<charT>& r)
 {
 	int n = to_int(r.read());
 	if (n < 1 or n > 9 or r.empty() or r.read() != STDEX_G(charT, '$'))
-		throw std::invalid_argument{ "index is not 1-9$" };
+		throw std::invalid_argument{ "position is not 1-9$" };
 	return n - 1;
 }
 
@@ -424,7 +424,7 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 {
 	using std::invalid_argument;
 
-	fmtstack<charT> fstk { s };
+	fmtstack<charT> fstk{ s };
 	bounded_reader<charT> r(s, sz);
 	int ac = -1;
 	bool sequential{};  // expects: ac != -1
@@ -565,6 +565,106 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 	return fstk;
 }
 
+template <typename charT>
+constexpr
+int parse_index(bounded_reader<charT>& r)
+{
+	int n = to_int(r.read());
+	if (n < 0 or n > 9 or r.empty())
+		throw std::invalid_argument{ "index is not 0-9" };
+	return n;
+}
+
+template <typename charT>
+constexpr
+fmtstack<charT> compile(charT const* s, size_t sz)
+{
+	using std::invalid_argument;
+
+	fmtstack<charT> fstk{ s };
+	bounded_reader<charT> r(s, sz);
+	int ac = -1;
+	bool sequential{};  // expects: ac != -1
+
+	while (r)
+	{
+		auto p = r.ptr();
+		charT c{};
+		for (; r; r.incr())
+		{
+			c = *r;
+			if (c == STDEX_G(charT, '{') or
+			    c == STDEX_G(charT, '}'))
+				break;
+		}
+
+		if (r)
+		{
+			if (r.ptr() + 1 == r.eptr())
+				throw invalid_argument{ "single brace" };
+
+			// handle escaping
+			if (r.look_ahead(c))
+			{
+				bool single = p == r.ptr();
+				r.incr();
+				if (single)
+					fstk.push(instruction(*r));
+				else
+					fstk.push(instruction(s, p, r.ptr()));
+
+				r.incr();
+				continue;
+			}
+		}
+
+		if (auto d = r.ptr() - p)
+		{
+			if (d == 1)
+				fstk.push(instruction(*p));
+			else
+				fstk.push(instruction(s, p, r.ptr()));
+		}
+
+		if (r.empty())
+			break;
+
+		r.incr();
+
+		// assert: !r.empty()
+		if (ac == -1)
+			sequential = *r == STDEX_G(charT, ':') or
+			             *r == STDEX_G(charT, '}');
+
+		if (sequential)
+			++ac;
+		else
+			ac = parse_index(r);
+
+		entry e{ OP_FMT, {}, ac, -1, -1 };
+
+		if (*r == STDEX_G(charT, '}'))
+		{
+			r.incr();
+			fstk.push(e);
+			continue;
+		}
+
+		if (*r == STDEX_G(charT, ':'))
+			r.incr();
+
+		if (r.empty())
+			throw invalid_argument{ "incomplete specification" };
+
+		if (r.read() != STDEX_G(charT, '}'))
+			throw invalid_argument{ "unknown format specifier" };
+
+		fstk.push(e);
+	}
+
+	return fstk;
+}
+
 #ifndef XFORMAT_HEADER_ONLY
 
 extern template fmtstack<char> compile_c(char const*, size_t);
@@ -674,6 +774,30 @@ constexpr
 auto operator"" _cfmt(char32_t const* s, size_t sz)
 {
 	return detail::compile_c(s, sz);
+}
+
+constexpr
+auto operator"" _fmt(char const* s, size_t sz)
+{
+	return detail::compile(s, sz);
+}
+
+constexpr
+auto operator"" _fmt(wchar_t const* s, size_t sz)
+{
+	return detail::compile(s, sz);
+}
+
+constexpr
+auto operator"" _fmt(char16_t const* s, size_t sz)
+{
+	return detail::compile(s, sz);
+}
+
+constexpr
+auto operator"" _fmt(char32_t const* s, size_t sz)
+{
+	return detail::compile(s, sz);
 }
 }
 

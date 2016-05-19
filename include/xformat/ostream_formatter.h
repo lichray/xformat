@@ -119,6 +119,7 @@ struct ostream_formatter : ostream_outputter<charT, traits>
 	{
 		switch (sp.facade())
 		{
+		case '\0':
 		case 'c':
 			return print_string_ref(sp, w, c);
 		case 'i':
@@ -131,10 +132,14 @@ struct ostream_formatter : ostream_outputter<charT, traits>
 
 	void format(fmtshape sp, int w, int p, bool v)
 	{
-		if (sp.facade() == 's')
-			print_string_ref(sp, w, v, os::boolalpha);
-		else
-			potentially_formattable(sp, w, p, v);
+		switch (sp.facade())
+		{
+		case '\0':
+		case 's':
+			return print_string_ref(sp, w, v, os::boolalpha);
+		}
+
+		potentially_formattable(sp, w, p, v);
 	}
 
 private:
@@ -190,6 +195,7 @@ private:
 	{
 		switch (sp.facade())
 		{
+		case '\0':
 		case 'c':
 			return print_string_ref(sp, w, c);
 		case 'i':
@@ -298,9 +304,10 @@ private:
 		charT sign{};
 		switch (sp.facade())
 		{
+		case '\0':
 		case 'd':
 		case 'i':
-			if (has(sp, fmtoptions::sign))
+			if (std::is_signed<T>() and has(sp, fmtoptions::sign))
 				sign = STDEX_G(charT, '+');
 		case 'u':
 			d = lexical_width<10>(v);
