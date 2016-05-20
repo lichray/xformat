@@ -696,6 +696,7 @@ struct do_int_cast<T, enable_if_t<std::is_convertible<T, int>::value and
 struct int_cast
 {
 	template <typename T>
+	__attribute__((always_inline))
 	constexpr int operator()(T const& v) const
 	{
 		return do_int_cast<T>::fn(v);
@@ -717,22 +718,33 @@ decltype(auto) vformat(Formatter fter, fmtstack<charT> const& fstk, Tuple tp)
 			fter.send(fstk.raw_char(et));
 			break;
 		case OP_FMT:
-			visit_at(
-			    et.arg,
-			    [
-			      shape = et.shape,
-			      w = et.has(REG_ARG1)
-				      ? visit_at<int>(et.arg1, int_cast(), tp)
-				      : et.arg1,
-			      p = et.has(REG_ARG2)
-				      ? visit_at<int>(et.arg2, int_cast(), tp)
-				      : et.arg2,
-			      &fter
-			    ](auto&& x)
-			    {
-				    fter.format(shape, w, p, x);
-			    },
-			    tp);
+			int w = et.arg1;
+			int p = et.arg2;
+
+			if (et.has(REG_ARG1))
+			{
+				if (not is_index_of<Tuple>(w))
+					goto bad_index;
+				w = visit_at<int>(w, int_cast(), tp);
+			}
+			if (et.has(REG_ARG2))
+			{
+				if (not is_index_of<Tuple>(p))
+					goto bad_index;
+				p = visit_at<int>(p, int_cast(), tp);
+			}
+			if (not is_index_of<Tuple>(et.arg))
+			{
+			bad_index:
+				throw std::out_of_range{ "no such element" };
+			}
+
+			visit_at(et.arg,
+			         [=, &fter](auto&& x)
+			         {
+				         fter.format(et.shape, w, p, x);
+				 },
+			         tp);
 			break;
 		}
 	}

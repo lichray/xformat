@@ -26,6 +26,7 @@
 #pragma once
 
 #include <tuple>
+#include <assert.h>
 
 namespace stdex
 {
@@ -73,14 +74,21 @@ struct _visit_at<R, Low, High, Mid, std::enable_if_t<(Low < High)>>
 	}
 };
 
+template <typename Tuple>
+constexpr
+bool is_index_of(int n)
+{
+	constexpr int m = std::tuple_size<std::decay_t<Tuple>>::value;
+	return 0 <= n and n < m;
+}
+
 template <typename R = void, typename Tuple, typename F>
 inline
 decltype(auto) visit_at(int n, F&& f, Tuple&& tp)
 {
-	constexpr int m = std::tuple_size<std::decay_t<Tuple>>::value;
-	if (!(0 <= n and n < m))
-		throw std::out_of_range{ "no such element" };
+	assert(is_index_of<Tuple>(n));
 
+	constexpr int m = std::tuple_size<std::decay_t<Tuple>>::value;
 	return _visit_at<R, 0, m - 1>::apply(n, std::forward<F>(f),
 	                                     std::forward<Tuple>(tp));
 }
