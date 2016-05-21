@@ -492,7 +492,9 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 			{
 				r.incr();
 				op |= REG_ARG1;
-				width = sequential ? ac++ : parse_position(r);
+				width = sequential or r.empty()
+				            ? ac++
+				            : parse_position(r);
 			}
 		}
 
@@ -504,8 +506,9 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 			{
 				r.incr();
 				op |= REG_ARG2;
-				precision =
-				    sequential ? ac++ : parse_position(r);
+				precision = sequential or r.empty()
+				                ? ac++
+				                : parse_position(r);
 			}
 			else
 				precision = parse_int(r);
@@ -650,8 +653,122 @@ fmtstack<charT> compile(charT const* s, size_t sz)
 			continue;
 		}
 
-		if (*r == STDEX_G(charT, ':'))
+		if (r.read() != STDEX_G(charT, ':'))
+			throw invalid_argument{ "missing ':' before spec" };
+
+		if (r)
+		{
+			switch (*r)
+			{
+			case STDEX_G(charT, '<'):
+				e.shape = fmtoptions::left;
+				r.incr();
+				break;
+			case STDEX_G(charT, '>'):
+				e.shape = fmtoptions::right;
+				r.incr();
+				break;
+			}
+		}
+
+		if (r)
+		{
+			switch (*r)
+			{
+			case STDEX_G(charT, '+'):
+				e.shape |= fmtoptions::sign;
+			case STDEX_G(charT, '-'):
+				r.incr();
+				break;
+			case STDEX_G(charT, ' '):
+				e.shape |= fmtoptions::aligned_sign;
+				r.incr();
+				break;
+			}
+		}
+
+		if (r and *r == STDEX_G(charT, '#'))
+		{
+			e.shape |= fmtoptions::alt;
 			r.incr();
+		}
+
+		if (r and *r == STDEX_G(charT, '0'))
+		{
+			e.shape |= fmtoptions::zero;
+			r.incr();
+		}
+
+		// field width
+		if (r)
+		{
+			if (is_0to9(*r))
+				e.arg1 = parse_int(r);
+			else if (*r == STDEX_G(charT, '{'))
+			{
+				r.incr();
+				if (r and is_0to9(*r))
+					e.arg1 = to_int(r.read());
+				else
+					e.arg1 = ++ac;
+				e.op_ |= REG_ARG1;
+				if (!(r and r.read() == STDEX_G(charT, '}')))
+					throw invalid_argument
+					{
+					    "width not ended with '}'"
+					};
+			}
+		}
+
+		// precision
+		if (r and *r == STDEX_G(charT, '.'))
+		{
+			r.incr();
+			if (is_0to9(*r))
+				e.arg2 = parse_int(r);
+			else if (*r == STDEX_G(charT, '{'))
+			{
+				r.incr();
+				if (r and is_0to9(*r))
+					e.arg2 = to_int(r.read());
+				else
+					e.arg2 = ++ac;
+				e.op_ |= REG_ARG2;
+				if (!(r and r.read() == STDEX_G(charT, '}')))
+					throw invalid_argument
+					{
+					    "precision not ended with '}'"
+					};
+			}
+			else
+				throw invalid_argument{ "missing precision" };
+		}
+
+		if (r)
+		{
+			switch (*r)
+			{
+			case STDEX_G(charT, 'd'):
+			case STDEX_G(charT, 'o'):
+			case STDEX_G(charT, 'u'):
+			case STDEX_G(charT, 'x'):
+			case STDEX_G(charT, 'X'):
+			case STDEX_G(charT, 'f'):
+			case STDEX_G(charT, 'F'):
+			case STDEX_G(charT, 'e'):
+			case STDEX_G(charT, 'E'):
+			case STDEX_G(charT, 'g'):
+			case STDEX_G(charT, 'G'):
+			case STDEX_G(charT, 'a'):
+			case STDEX_G(charT, 'A'):
+			case STDEX_G(charT, 'c'):
+			case STDEX_G(charT, 's'):
+			case STDEX_G(charT, 'p'):
+				e.shape = charcvt(*r);
+				r.incr();
+				break;
+			}
+		}
 
 		if (r.empty())
 			throw invalid_argument{ "incomplete specification" };
@@ -671,6 +788,11 @@ extern template fmtstack<char> compile_c(char const*, size_t);
 extern template fmtstack<wchar_t> compile_c(wchar_t const*, size_t);
 extern template fmtstack<char16_t> compile_c(char16_t const*, size_t);
 extern template fmtstack<char32_t> compile_c(char32_t const*, size_t);
+
+extern template fmtstack<char> compile(char const*, size_t);
+extern template fmtstack<wchar_t> compile(wchar_t const*, size_t);
+extern template fmtstack<char16_t> compile(char16_t const*, size_t);
+extern template fmtstack<char32_t> compile(char32_t const*, size_t);
 
 #endif
 

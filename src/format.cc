@@ -35,5 +35,10 @@ template fmtstack<wchar_t> compile_c(wchar_t const*, size_t);
 template fmtstack<char16_t> compile_c(char16_t const*, size_t);
 template fmtstack<char32_t> compile_c(char32_t const*, size_t);
 
+template fmtstack<char> compile(char const*, size_t);
+template fmtstack<wchar_t> compile(wchar_t const*, size_t);
+template fmtstack<char16_t> compile(char16_t const*, size_t);
+template fmtstack<char32_t> compile(char32_t const*, size_t);
+
 }
 }
