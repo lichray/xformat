@@ -142,6 +142,12 @@ struct ostream_formatter : ostream_outputter<charT, traits>
 		potentially_formattable(sp, w, p, v);
 	}
 
+	template <typename T>
+	void format(fmtshape sp, int w, int p, std::reference_wrapper<T> r)
+	{
+		format(sp, w, p, r.get());
+	}
+
 private:
 	using os = typename outputter_type::ostream_type;
 	using fmtflags = typename os::fmtflags;

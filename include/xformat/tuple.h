@@ -26,6 +26,7 @@
 #pragma once
 
 #include <tuple>
+#include <array>
 #include <assert.h>
 
 namespace stdex
@@ -93,6 +94,14 @@ decltype(auto) visit_at(int n, F&& f, Tuple&& tp)
 	                                     std::forward<Tuple>(tp));
 }
 
+template <typename R = void, typename T, size_t N, typename F>
+inline
+decltype(auto) visit_at(int n, F&& f, std::array<T, N>& v)
+{
+	assert((is_index_of<decltype(v)>(n)));
+	return std::forward<F>(f)(v[size_t(n)]);
+}
+
 template <typename T, typename = void>
 struct _param_type
 {
@@ -114,10 +123,75 @@ struct _param_type<std::reference_wrapper<T>>
 	using type = _param_type_t<T>;
 };
 
+template <typename T>
+using param_type_t = _param_type_t<std::decay_t<T>>;
+
+template <typename... T>
+struct _type_list;
+
+template <typename T, typename...>
+struct _head
+{
+	using type = T;
+};
+
+template <typename... T>
+using _head_t = typename _head<T...>::type;
+
+template <typename T>
+struct _ident
+{
+};
+
+template <typename T, typename... Ts>
+struct all_same
+    : std::is_same<
+          _type_list<_ident<T>, _ident<Ts>...>,
+          _type_list<_ident<T>, decltype((void)_ident<Ts>(), _ident<T>())...>>
+{
+};
+
+template <typename... T>
+auto _as_array_of_cref(std::false_type, T&&... v)
+{
+	using t = param_type_t<_head_t<T...>>;
+	return std::array<t, sizeof...(T)>{ { v... } };
+}
+
+template <typename... T>
+auto _as_array_of_cref(std::true_type, T&&... v)
+{
+	using t = std::reference_wrapper<
+	    std::remove_reference_t<param_type_t<_head_t<T...>>>>;
+	return std::array<t, sizeof...(T)>{ { v... } };
+}
+
+template <typename... T>
+auto _as_tuple_of_cref(std::true_type, T&&... v)
+{
+	return _as_array_of_cref(
+	    std::is_reference<param_type_t<_head_t<T...>>>(),
+	    std::forward<T>(v)...);
+}
+
+template <typename... T>
+auto _as_tuple_of_cref(std::false_type, T&&... v)
+{
+	return std::tuple<param_type_t<T>...>{ v... };
+}
+
 template <typename... T>
 auto as_tuple_of_cref(T&&... v)
 {
-	return std::tuple<_param_type_t<std::decay_t<T>>...>{ v... };
+	return _as_tuple_of_cref(all_same<param_type_t<T>...>(),
+	                         std::forward<T>(v)...);
+}
+
+template <>
+inline
+auto as_tuple_of_cref<>()
+{
+	return std::make_tuple();
 }
 
 }
