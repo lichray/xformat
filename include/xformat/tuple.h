@@ -27,6 +27,7 @@
 
 #include <tuple>
 #include <array>
+#include <functional>
 #include <assert.h>
 
 namespace stdex
