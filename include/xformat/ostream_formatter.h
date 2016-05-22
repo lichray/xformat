@@ -443,7 +443,7 @@ private:
 			if (dp != buf + n)
 				*(wp + std::distance(buf, dp) - off) =
 				    punct.decimal_point();
-			print_string_ref(sp, 0, s);
+			this->send(s);
 		}
 		else
 		{
