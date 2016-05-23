@@ -28,7 +28,6 @@
 #include <tuple>
 #include <array>
 #include <functional>
-#include <assert.h>
 
 namespace stdex
 {
@@ -43,7 +42,7 @@ struct _visit_at<R, Low, High, Mid, std::enable_if_t<(Low > High)>>
 	template <typename... T>
 	[[noreturn]] static R apply(int, T&&...)
 	{
-		__builtin_unreachable();
+		throw std::out_of_range{ "no such element" };
 	}
 };
 
@@ -76,20 +75,10 @@ struct _visit_at<R, Low, High, Mid, std::enable_if_t<(Low < High)>>
 	}
 };
 
-template <typename Tuple>
-constexpr
-bool is_index_of(int n)
-{
-	constexpr int m = std::tuple_size<std::decay_t<Tuple>>::value;
-	return 0 <= n and n < m;
-}
-
 template <typename R = void, typename Tuple, typename F>
 inline
 decltype(auto) visit_at(int n, F&& f, Tuple&& tp)
 {
-	assert(is_index_of<Tuple>(n));
-
 	constexpr int m = std::tuple_size<std::decay_t<Tuple>>::value;
 	return _visit_at<R, 0, m - 1>::apply(n, std::forward<F>(f),
 	                                     std::forward<Tuple>(tp));
@@ -99,8 +88,7 @@ template <typename R = void, typename T, size_t N, typename F>
 inline
 decltype(auto) visit_at(int n, F&& f, std::array<T, N>& v)
 {
-	assert((is_index_of<decltype(v)>(n)));
-	return std::forward<F>(f)(v[size_t(n)]);
+	return std::forward<F>(f)(v.at(size_t(n)));
 }
 
 template <typename T, typename = void>

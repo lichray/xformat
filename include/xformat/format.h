@@ -844,22 +844,9 @@ decltype(auto) vformat(Formatter fter, fmtstack<charT> const& fstk, Tuple tp)
 			int p = et.arg2;
 
 			if (et.has(REG_ARG1))
-			{
-				if (not is_index_of<Tuple>(w))
-					goto bad_index;
-				w = visit_at<int>(w, int_cast(), tp);
-			}
+				w = visit_at<int>(et.arg1, int_cast(), tp);
 			if (et.has(REG_ARG2))
-			{
-				if (not is_index_of<Tuple>(p))
-					goto bad_index;
-				p = visit_at<int>(p, int_cast(), tp);
-			}
-			if (not is_index_of<Tuple>(et.arg))
-			{
-			bad_index:
-				throw std::out_of_range{ "no such element" };
-			}
+				p = visit_at<int>(et.arg2, int_cast(), tp);
 
 			visit_at(et.arg,
 			         [=, &fter](auto&& x)
