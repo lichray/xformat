@@ -1,17 +1,16 @@
 sudo: required
 dist: trusty
 language: cpp
+compiler:
+  - clang
+  - gcc
 addons:
   apt:
     packages:
       - g++-5
     sources:
       - ubuntu-toolchain-r-test
-matrix:
-  include:
-    - compiler: clang
-      script:
-        - cmake . && make -j4 && ./tests/run
-    - compiler: gcc
-      script:
-        - cmake -DCMAKE_CXX_COMPILER=g++-5 . && make -j4 && ./tests/run
+before_install:
+  - if [ "$CXX" = "g++" ]; then export CC="gcc-5" CXX="g++-5"; fi
+script:
+  - cmake . && make -j4 && ./tests/run
