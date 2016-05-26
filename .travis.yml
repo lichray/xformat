@@ -2,9 +2,18 @@ sudo: required
 dist: trusty
 language: cpp
 compiler:
-  - clang
   - gcc
+env:
+  global:
+    - secure: "T81Ruk75x8170dQANU6yq3WqsSX/122T528Icy/wggdfCDe8XEoUD9FQ+U7bWFAves6XyQ/JpYyeKVt10U4EVruk3qlx8WLwabwMxJctXkvB8RMlPN1wUTpXo29iGSgsNNuaBDwYigyAlM/lo/INSZDyXUIwywLBvRhyGgzFW3LCOyVi1PxIuRdqoBqc1D5YNQ1e2U0jN9s+FVNQ6IgeQznUugeOq9saFPUafp1PzknqrOphlrSzO09LnUKEb8O0v3R0Nay/WJvSkz/qJWpGOFKAEYquE5cm5XIxBBd3/MRfbUQXARQy6a6lgHcTYkxuXG7658N8i3ZnTfMDARLzN+2SKeRkmrKkbF6cC7WJa8D0U4Fm1MAFqxY6wmBDTbmh9eFG44xH2pf1DyZxiTV3gbdr0GRS9NexXwWgg9YKnhwkHN0quFvh3TfJMuzAv6j9Mn8YJgrhIRZDvcJXDvxu1GlvD0EmuoM0ocwkFdtNTnDz9W3OokCSelUuBuaBkQ7nHn1icPuu9BCNQm2HS3SWGMQvetKzcOuWN98vjp2pfpnYlCnGGKKPxtC6PvXbEzthVhX+gbaBhOBmkCKIqcQRw6fqAj5pzg2kwE/8Q71RbyZvflxpwgx/XOQdzx0O1Rp6cAksntUbatoppcevvm3dwDcmbcmxTUDzJz7tFcTrmo0="
 addons:
+  coverity_scan:
+    project:
+      name: "lichray/xformat"
+    notification_email: lichray@gmail.com
+    build_command_prepend: "cov-configure --comptype g++ --compiler $CXX --template && cmake -DCMAKE_BUILD_TYPE=Release ."
+    build_command: "make -j4"
+    branch_pattern: coverity_scan
   apt:
     packages:
       - g++-5
