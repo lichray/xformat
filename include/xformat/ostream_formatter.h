@@ -117,17 +117,11 @@ struct ostream_formatter : ostream_outputter<charT, traits>
 
 	void format(fmtshape sp, int w, int p, charT c)
 	{
-		switch (sp.facade())
-		{
-		case '\0':
-		case 'c':
+		if (sp.facade() != 'i')
 			return print_string_ref(sp, w, c);
-		case 'i':
+		else
 			return potentially_formattable(sp, w, p,
 			                               traits::to_int_type(c));
-		}
-
-		potentially_formattable(sp, w, p, c);
 	}
 
 	void format(fmtshape sp, int w, int p, bool v)
@@ -199,16 +193,10 @@ private:
 
 	void print(fmtshape sp, int w, int p, char c, superficial<char>)
 	{
-		switch (sp.facade())
-		{
-		case '\0':
-		case 'c':
+		if (sp.facade() != 'i')
 			return print_string_ref(sp, w, c);
-		case 'i':
+		else
 			return potentially_formattable(sp, w, p, int(c));
-		}
-
-		potentially_formattable(sp, w, p, c);
 	}
 
 	template <typename T>
@@ -315,6 +303,7 @@ private:
 		case 'i':
 			if (std::is_signed<T>() and has(sp, fmtoptions::sign))
 				sign = STDEX_G(charT, '+');
+			/* fallthrough */
 		case 'u':
 			d = lexical_width<10>(v);
 			break;
@@ -383,7 +372,8 @@ private:
 		    .print_basic_arithmetic(sp, w, p, v, os::showpos);
 		auto s = dout.str();
 		auto it = std::find(s.begin(), s.end(), STDEX_G(charT, '+'));
-		*it = dout.fill();
+		if (it != s.end())
+			*it = dout.fill();
 		state().write(s.data(), std::streamsize(s.size()));
 	}
 
@@ -437,8 +427,8 @@ private:
 				                ? state().fill()
 				                : STDEX_G(charT, '+'));
 			s.append(size_t(w - n), STDEX_G(charT, '0'));
-			auto wp = s.end();
 			s.resize(size_t(w));
+			auto wp = s.begin() + w - n + off;
 			ctype.widen(buf + off, buf + n, &*wp);
 			if (dp != buf + n)
 				*(wp + std::distance(buf, dp) - off) =
