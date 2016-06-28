@@ -29,7 +29,6 @@
 #include <sstream>
 #include <cmath>
 #include <algorithm>
-#include <experimental/string_view>
 
 #include <locale>
 #include <new>
@@ -39,11 +38,11 @@
 
 #include "format.h"
 #include "gliteral.h"
+#include "qoi.h"
 
 namespace stdex
 {
 
-using std::experimental::basic_string_view;
 using std::enable_if_t;
 
 template <typename charT, typename traits = std::char_traits<charT>>
@@ -269,7 +268,7 @@ private:
 	}
 
 	template <typename T>
-	__attribute__((always_inline))
+	_STDEX_always_inline
 	void print_string_ref(fmtshape sp, int w, T const& v, fmtflags fl = {})
 	{
 		fl |= base_flags();
@@ -458,7 +457,7 @@ private:
 		return state().flags() & os::unitbuf;
 	}
 
-	constexpr static fmtflags to_flags(fmtshape sp)
+	_STDEX_constexpr static fmtflags to_flags(fmtshape sp)
 	{
 		switch (sp.facade())
 		{

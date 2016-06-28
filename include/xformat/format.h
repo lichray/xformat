@@ -27,15 +27,14 @@
 
 #include <assert.h>
 #include <limits>
-#include <experimental/string_view>
 
 #include "tuple.h"
 #include "gliteral.h"
+#include "qoi.h"
 
 namespace stdex
 {
 
-using std::experimental::basic_string_view;
 using std::enable_if_t;
 
 template <bool V>
@@ -80,22 +79,19 @@ operator~(fmtoptions __x)
 constexpr
 fmtoptions& operator&=(fmtoptions& __x, fmtoptions __y)
 {
-	__x = __x & __y;
-	return __x;
+	return __x = __x & __y;
 }
 
 constexpr
 fmtoptions& operator|=(fmtoptions& __x, fmtoptions __y)
 {
-	__x = __x | __y;
-	return __x;
+	return __x = __x | __y;
 }
 
 constexpr
 fmtoptions& operator^=(fmtoptions& __x, fmtoptions __y)
 {
-	__x = __x ^ __y;
-	return __x;
+	return __x = __x ^ __y;
 }
 
 struct fmtshape
@@ -110,17 +106,17 @@ struct fmtshape
 		return fmtoptions(opts_);
 	}
 
-	constexpr void operator=(char ch)
+	_STDEX_constexpr void operator=(char ch)
 	{
 		ch_ = ch;
 	}
 
-	constexpr void operator=(fmtoptions opts)
+	_STDEX_constexpr void operator=(fmtoptions opts)
 	{
 		opts_ = (unsigned char)opts;
 	}
 
-	constexpr void operator|=(fmtoptions opts)
+	_STDEX_constexpr void operator|=(fmtoptions opts)
 	{
 		*this = options() | opts;
 	}
@@ -191,7 +187,7 @@ struct fmtstack
 		return sizeof(line) / sizeof(detail::entry);
 	}
 
-	constexpr void push(detail::entry x)
+	_STDEX_constexpr void push(detail::entry x)
 	{
 		if (size == max_size())
 			throw std::length_error{ "format string too complex" };
@@ -199,7 +195,7 @@ struct fmtstack
 		line[size++] = std::move(x);
 	}
 
-	constexpr auto raw_string(detail::entry const& x) const
+	_STDEX_constexpr auto raw_string(detail::entry const& x) const
 	    -> basic_string_view<charT>
 	{
 		auto hi = x.arg1;
@@ -207,7 +203,7 @@ struct fmtstack
 		return { start + hi, size_t(lo - hi) };
 	}
 
-	static constexpr charT raw_char(detail::entry const& x)
+	static _STDEX_constexpr charT raw_char(detail::entry const& x)
 	{
 		assert(x.opcode() == detail::OP_RAW_C);
 		return charT(x.arg);
@@ -227,11 +223,11 @@ namespace detail
 {
 
 template <typename Iter>
-constexpr
+_STDEX_constexpr
 auto instruction(Iter from, Iter first, Iter last)
 {
 	assert(from <= first and first <= last);
-	if (last - from > std::numeric_limits<int>::max())
+	if (last - from > (std::numeric_limits<int>::max)())
 		throw std::length_error{ "raw string is too long" };
 
 	return entry{ OP_RAW_S, {}, {}, int(first - from), int(last - from) };
@@ -245,7 +241,7 @@ auto instruction(charT ch)
 }
 
 template <typename Iter, typename charT>
-constexpr
+_STDEX_constexpr
 auto findc(Iter first, Iter last, charT c)
 {
 	for (; first != last; ++first)
@@ -276,23 +272,23 @@ struct bounded_reader
 		return cur_ == end_;
 	}
 
-	constexpr void incr()
+	_STDEX_constexpr void incr()
 	{
 		++cur_;
 	}
 
-	constexpr auto read()
+	_STDEX_constexpr auto read()
 	{
 		return *cur_++;
 	}
 
-	constexpr bool look_ahead(charT c) const
+	_STDEX_constexpr bool look_ahead(charT c) const
 	{
 		auto p = ptr();
 		return ++p < eptr() and *p == c;
 	}
 
-	constexpr void seek_to(charT c)
+	_STDEX_constexpr void seek_to(charT c)
 	{
 		cur_ = findc(cur_, end_, c);
 	}
@@ -339,7 +335,7 @@ int to_int(charT c)
 }
 
 template <typename charT>
-constexpr
+_STDEX_constexpr
 int parse_int(bounded_reader<charT>& r)
 {
 	int n = 0;
@@ -352,7 +348,7 @@ int parse_int(bounded_reader<charT>& r)
 }
 
 template <typename charT>
-constexpr
+_STDEX_constexpr
 int parse_position(bounded_reader<charT>& r)
 {
 	int n = to_int(r.read());
@@ -362,7 +358,7 @@ int parse_position(bounded_reader<charT>& r)
 }
 
 template <typename charT>
-constexpr
+_STDEX_constexpr
 auto parse_flags_c(bounded_reader<charT>& r)
 {
 	fmtshape sp;
@@ -398,13 +394,15 @@ auto parse_flags_c(bounded_reader<charT>& r)
 }
 
 template <typename charT>
-constexpr char charcvt(charT c, std::true_type)
+constexpr
+char charcvt(charT c, std::true_type)
 {
 	return char(c);
 }
 
 template <typename charT>
-constexpr char charcvt(charT c, std::false_type)
+_STDEX_constexpr
+char charcvt(charT c, std::false_type)
 {
 	static_assert(STDEX_G(charT, 'A') == 65,
 	              "non-execution character set is not Unicode");
@@ -413,13 +411,14 @@ constexpr char charcvt(charT c, std::false_type)
 }
 
 template <typename charT>
-constexpr char charcvt(charT c)
+constexpr
+char charcvt(charT c)
 {
 	return charcvt(c, bool_constant<STDEX_G(charT, 'A') == 'A'>());
 }
 
 template <typename charT>
-constexpr
+_STDEX_constexpr
 fmtstack<charT> compile_c(charT const* s, size_t sz)
 {
 	using std::invalid_argument;
@@ -569,7 +568,7 @@ fmtstack<charT> compile_c(charT const* s, size_t sz)
 }
 
 template <typename charT>
-constexpr
+_STDEX_constexpr
 int parse_index(bounded_reader<charT>& r)
 {
 	int n = to_int(r.read());
@@ -579,7 +578,7 @@ int parse_index(bounded_reader<charT>& r)
 }
 
 template <typename charT>
-constexpr
+_STDEX_constexpr
 fmtstack<charT> compile(charT const* s, size_t sz)
 {
 	using std::invalid_argument;
@@ -818,7 +817,7 @@ struct do_int_cast<T, enable_if_t<std::is_convertible<T, int>::value and
 struct int_cast
 {
 	template <typename T>
-	__attribute__((always_inline))
+	_STDEX_always_inline
 	constexpr int operator()(T const& v) const
 	{
 		return do_int_cast<T>::fn(v);
@@ -873,49 +872,49 @@ decltype(auto) format(Formatter fter, fmtstack<charT> const& fstk,
 
 inline namespace literals
 {
-constexpr
+_STDEX_constexpr
 auto operator"" _cfmt(char const* s, size_t sz)
 {
 	return detail::compile_c(s, sz);
 }
 
-constexpr
+_STDEX_constexpr
 auto operator"" _cfmt(wchar_t const* s, size_t sz)
 {
 	return detail::compile_c(s, sz);
 }
 
-constexpr
+_STDEX_constexpr
 auto operator"" _cfmt(char16_t const* s, size_t sz)
 {
 	return detail::compile_c(s, sz);
 }
 
-constexpr
+_STDEX_constexpr
 auto operator"" _cfmt(char32_t const* s, size_t sz)
 {
 	return detail::compile_c(s, sz);
 }
 
-constexpr
+_STDEX_constexpr
 auto operator"" _fmt(char const* s, size_t sz)
 {
 	return detail::compile(s, sz);
 }
 
-constexpr
+_STDEX_constexpr
 auto operator"" _fmt(wchar_t const* s, size_t sz)
 {
 	return detail::compile(s, sz);
 }
 
-constexpr
+_STDEX_constexpr
 auto operator"" _fmt(char16_t const* s, size_t sz)
 {
 	return detail::compile(s, sz);
 }
 
-constexpr
+_STDEX_constexpr
 auto operator"" _fmt(char32_t const* s, size_t sz)
 {
 	return detail::compile(s, sz);

@@ -32,7 +32,7 @@ TEST_CASE("printf guarantees")
 	std::string st = "test";
 	printf(ss, "%-7.s", st);
 	s = str(ss);
-	printf(ss, "%-7.s", std::experimental::string_view(st));
+	printf(ss, "%-7.s", string_view(st));
 
 	REQUIRE(s == "test___");
 	REQUIRE(str(ss) == s);
